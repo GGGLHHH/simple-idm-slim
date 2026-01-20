@@ -1,3 +1,5 @@
+.DEFAULT_GOAL := help
+
 .PHONY: build run test test-cover lint fmt clean help
 .PHONY: migrate-up migrate-down migrate-status migrate-create migrate-reset
 
