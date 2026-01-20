@@ -2,9 +2,10 @@
 
 .PHONY: build run test test-cover lint fmt clean help
 .PHONY: migrate-up migrate-down migrate-status migrate-create migrate-reset
+.PHONY: postgres-start postgres-stop postgres-logs
 
 # Database connection string (override with environment variable)
-DB_URL ?= postgres://localhost/simple_idm?sslmode=disable
+DB_URL ?= postgres://postgres:postgres@localhost:25432/simple_idm?sslmode=disable
 
 # Build the standalone server
 build:
@@ -70,6 +71,23 @@ migrate-reset:
 	goose -dir migrations postgres "$(DB_URL)" reset
 	goose -dir migrations postgres "$(DB_URL)" up
 
+# Start PostgreSQL 17 in Podman
+postgres-start:
+	podman run -d --name simple-idm-postgres \
+		-e POSTGRES_USER=postgres \
+		-e POSTGRES_PASSWORD=postgres \
+		-e POSTGRES_DB=simple_idm \
+		-p 25432:5432 \
+		postgres:17
+
+# Stop PostgreSQL container
+postgres-stop:
+	podman stop simple-idm-postgres && podman rm simple-idm-postgres
+
+# Show PostgreSQL logs
+postgres-logs:
+	podman logs -f simple-idm-postgres
+
 # Show help
 help:
 	@echo "Available targets:"
@@ -96,10 +114,15 @@ help:
 	@echo "    migrate-create   - Create a new migration"
 	@echo "    migrate-reset    - Reset and re-run all migrations"
 	@echo ""
+	@echo "  PostgreSQL (podman):"
+	@echo "    postgres-start   - Start PostgreSQL 17 on port 25432"
+	@echo "    postgres-stop    - Stop and remove PostgreSQL container"
+	@echo "    postgres-logs    - Follow PostgreSQL logs"
+	@echo ""
 	@echo "  Other:"
 	@echo "    clean            - Remove build artifacts"
 	@echo "    help             - Show this help"
 	@echo ""
 	@echo "  Environment variables:"
 	@echo "    DB_URL           - Database connection string"
-	@echo "                       Default: postgres://localhost/simple_idm?sslmode=disable"
+	@echo "                       Default: postgres://postgres:postgres@localhost:25432/simple_idm?sslmode=disable"
