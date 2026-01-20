@@ -1,6 +1,6 @@
 ---
 title: "simple-idm v0: Minimal Password + Google OAuth"
-project: "tendant/simple-idm"
+project: "tendant/simple-idm-slim"
 version: "v0.1"
 date: "2026-01-20"
 status: "Proposed"
