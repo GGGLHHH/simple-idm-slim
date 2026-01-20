@@ -10,10 +10,15 @@ import (
 	"github.com/tendant/simple-idm-slim/idm"
 )
 
-func Example_basic() {
-	// Connect to your database
+func Example() {
+	// Connect to database
 	db, err := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
 	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Run embedded migrations
+	if err := idm.Migrate(db); err != nil {
 		log.Fatal(err)
 	}
 
@@ -26,49 +31,39 @@ func Example_basic() {
 		log.Fatal(err)
 	}
 
-	// Mount auth routes under /auth/
-	mux := http.NewServeMux()
-	mux.Handle("/auth/", http.StripPrefix("/auth", auth.Handler()))
+	// Mount on chi router
+	r := chi.NewRouter()
+	r.Mount("/auth", auth.Router())
 
 	fmt.Println("Server starting on :8080")
-	// http.ListenAndServe(":8080", mux)
+	// http.ListenAndServe(":8080", r)
 }
 
-func Example_withRoutes() {
+func Example_withStdlib() {
 	db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
+	idm.Migrate(db)
 
-	auth, err := idm.New(idm.Config{
+	auth, _ := idm.New(idm.Config{
 		DB:        db,
 		JWTSecret: "your-secret-key-at-least-32-characters",
 	})
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	// Use Routes() to register with custom prefix
+	// Use with standard library
 	mux := http.NewServeMux()
 	auth.Routes(mux, "/api/v1/auth")
 
-	// Routes are now:
-	// POST /api/v1/auth/register
-	// POST /api/v1/auth/login
-	// etc.
-
-	fmt.Println("Server starting on :8080")
+	fmt.Println("Server with stdlib starting on :8080")
 }
 
 func Example_withChiRouter() {
 	db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
+	idm.Migrate(db)
 
-	auth, err := idm.New(idm.Config{
+	auth, _ := idm.New(idm.Config{
 		DB:        db,
 		JWTSecret: "your-secret-key-at-least-32-characters",
 	})
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	// Use chi router directly
 	r := chi.NewRouter()
 
 	// Mount auth routes under /auth
@@ -79,68 +74,11 @@ func Example_withChiRouter() {
 	r.Mount("/api/user", auth.MeRouter())
 
 	fmt.Println("Server with chi router starting on :8080")
-	// http.ListenAndServe(":8080", r)
 }
 
-func Example_separateMeEndpoint() {
+func Example_protectRoutes() {
 	db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
-
-	auth, _ := idm.New(idm.Config{
-		DB:        db,
-		JWTSecret: "your-secret-key-at-least-32-characters",
-	})
-
-	mux := http.NewServeMux()
-
-	// Mount auth routes (without /me)
-	mux.HandleFunc("POST /auth/register", nil) // from auth.Handler()
-	mux.HandleFunc("POST /auth/login", nil)    // from auth.Handler()
-
-	// Mount /me separately wherever you want
-	mux.Handle("/user/profile", auth.MeHandler())
-	// or
-	mux.Handle("/api/me", auth.MeHandler())
-
-	fmt.Println("Me endpoint mounted separately")
-}
-
-func Example_protectCustomRoutes() {
-	db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
-
-	auth, _ := idm.New(idm.Config{
-		DB:        db,
-		JWTSecret: "your-secret-key-at-least-32-characters",
-	})
-
-	mux := http.NewServeMux()
-
-	// Mount auth routes
-	auth.Routes(mux, "/auth")
-
-	// Protect your own routes
-	mux.Handle("/api/", auth.AuthMiddleware()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Get user ID
-		userID, ok := idm.GetUserID(r)
-		if !ok {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		// Or get full user info
-		user, err := auth.GetUser(r)
-		if err != nil {
-			http.Error(w, "user not found", http.StatusNotFound)
-			return
-		}
-
-		fmt.Fprintf(w, "Hello %s (%s)!", *user.Name, userID)
-	})))
-
-	fmt.Println("Protected routes configured")
-}
-
-func Example_protectWithChi() {
-	db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
+	idm.Migrate(db)
 
 	auth, _ := idm.New(idm.Config{
 		DB:        db,
@@ -148,11 +86,9 @@ func Example_protectWithChi() {
 	})
 
 	r := chi.NewRouter()
-
-	// Mount auth routes
 	r.Mount("/auth", auth.Router())
 
-	// Protected API routes using chi's Group
+	// Protected routes using chi's Group
 	r.Group(func(r chi.Router) {
 		r.Use(auth.AuthMiddleware())
 
@@ -167,11 +103,12 @@ func Example_protectWithChi() {
 		})
 	})
 
-	fmt.Println("Protected chi routes configured")
+	fmt.Println("Protected routes configured")
 }
 
 func Example_withGoogle() {
 	db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
+	idm.Migrate(db)
 
 	auth, err := idm.New(idm.Config{
 		DB:        db,
@@ -186,8 +123,8 @@ func Example_withGoogle() {
 		log.Fatal(err)
 	}
 
-	mux := http.NewServeMux()
-	mux.Handle("/auth/", http.StripPrefix("/auth", auth.Handler()))
+	r := chi.NewRouter()
+	r.Mount("/auth", auth.Router())
 
 	fmt.Println("Server with Google OAuth starting on :8080")
 }

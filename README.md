@@ -9,6 +9,7 @@ A minimal, embeddable identity management library for Go applications.
 - JWT access tokens + opaque refresh tokens
 - Session management with token revocation
 - User profile management
+- Embedded migrations - no external tools needed
 - Built on chi router with standard library compatibility
 
 ## Installation
@@ -18,20 +19,6 @@ go get github.com/tendant/simple-idm-slim
 ```
 
 ## Quick Start
-
-### 1. Run the migration
-
-```bash
-# Install goose
-make install-goose
-
-# Run migrations
-DB_URL=postgres://localhost/yourdb?sslmode=disable make migrate-up
-```
-
-### 2. Use in your app
-
-**With chi router (recommended):**
 
 ```go
 package main
@@ -47,48 +34,28 @@ import (
 )
 
 func main() {
-    db, _ := sql.Open("postgres", "postgres://localhost/yourdb?sslmode=disable")
+    // Connect to database
+    db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
 
+    // Run embedded migrations
+    if err := idm.Migrate(db); err != nil {
+        log.Fatal(err)
+    }
+
+    // Create IDM instance
     auth, _ := idm.New(idm.Config{
         DB:        db,
         JWTSecret: "your-secret-key-at-least-32-characters",
     })
 
+    // Mount and serve
     r := chi.NewRouter()
     r.Mount("/auth", auth.Router())
-
     log.Fatal(http.ListenAndServe(":8080", r))
 }
 ```
 
-**With standard library:**
-
-```go
-package main
-
-import (
-    "database/sql"
-    "log"
-    "net/http"
-
-    _ "github.com/lib/pq"
-    "github.com/tendant/simple-idm-slim/idm"
-)
-
-func main() {
-    db, _ := sql.Open("postgres", "postgres://localhost/yourdb?sslmode=disable")
-
-    auth, _ := idm.New(idm.Config{
-        DB:        db,
-        JWTSecret: "your-secret-key-at-least-32-characters",
-    })
-
-    mux := http.NewServeMux()
-    auth.Routes(mux, "/api/v1/auth")
-
-    log.Fatal(http.ListenAndServe(":8080", mux))
-}
-```
+That's it! No external migration tools needed.
 
 ## API Endpoints
 
@@ -106,63 +73,30 @@ func main() {
 
 ## Mounting Options
 
-### Option 1: Chi Router (Recommended)
-
-Mount using chi's Mount method:
+### Chi Router (Recommended)
 
 ```go
 r := chi.NewRouter()
-
-// All routes under /auth
 r.Mount("/auth", auth.Router())
 
 // Or mount auth and /me separately
-r.Mount("/api/auth", auth.AuthRouter())   // Auth routes without /me
-r.Mount("/api/user", auth.MeRouter())     // Just /me endpoints
+r.Mount("/api/auth", auth.AuthRouter())
+r.Mount("/api/user", auth.MeRouter())
 ```
 
-### Option 2: Standard Library with Routes()
-
-Register routes directly on your mux with any prefix:
+### Standard Library
 
 ```go
 mux := http.NewServeMux()
-auth.Routes(mux, "/api/v1/auth")  // All routes under /api/v1/auth/*
+auth.Routes(mux, "/api/v1/auth")
 ```
 
-### Option 3: Standard Library with Handler()
-
-Get a handler and mount it with StripPrefix:
-
-```go
-mux := http.NewServeMux()
-mux.Handle("/auth/", http.StripPrefix("/auth", auth.Handler()))
-```
-
-### Option 4: Mount /me Separately (avoid conflicts)
-
-If your app already has a `/me` route:
-
-```go
-// With chi
-r := chi.NewRouter()
-r.Mount("/auth", auth.AuthRouter())        // Auth routes without /me
-r.Mount("/user/profile", auth.MeRouter())  // /me at custom path
-
-// With standard library
-mux := http.NewServeMux()
-mux.Handle("/user/profile", auth.MeHandler())
-```
-
-## Protect Your Own Routes
-
-**With chi router:**
+## Protect Your Routes
 
 ```go
 r := chi.NewRouter()
 r.Mount("/auth", auth.Router())
 
-// Protected routes using chi's Group
 r.Group(func(r chi.Router) {
     r.Use(auth.AuthMiddleware())
 
@@ -173,20 +107,7 @@ r.Group(func(r chi.Router) {
 })
 ```
 
-**With standard library:**
-
-```go
-mux := http.NewServeMux()
-auth.Routes(mux, "/auth")
-
-mux.Handle("/api/", auth.AuthMiddleware()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-    userID, ok := idm.GetUserID(r)
-    user, err := auth.GetUser(r)
-    fmt.Fprintf(w, "Hello %s!", user.Email)
-})))
-```
-
-## Add Google OAuth
+## Google OAuth
 
 ```go
 auth, _ := idm.New(idm.Config{
@@ -214,56 +135,44 @@ idm.New(idm.Config{
 })
 ```
 
-## API Methods
+## API Reference
 
-| Method | Description |
-|--------|-------------|
+| Function | Description |
+|----------|-------------|
+| `idm.Migrate(db)` | Run embedded migrations |
+| `idm.MigrateDown(db)` | Rollback one migration |
+| `idm.MigrateReset(db)` | Reset all migrations |
 | `idm.New(Config)` | Create IDM instance |
-| `auth.Router()` | Get chi.Router with all routes |
-| `auth.AuthRouter()` | Get chi.Router without /me routes |
-| `auth.MeRouter()` | Get chi.Router for /me only |
-| `auth.Handler()` | Get http.Handler (for StripPrefix) |
-| `auth.Routes(mux, prefix)` | Register routes on ServeMux |
-| `auth.MeHandler()` | Get /me handler separately |
-| `auth.AuthMiddleware()` | Middleware to protect routes |
+| `auth.Router()` | Chi router with all routes |
+| `auth.AuthRouter()` | Chi router without /me |
+| `auth.MeRouter()` | Chi router for /me only |
+| `auth.Handler()` | http.Handler (for StripPrefix) |
+| `auth.Routes(mux, prefix)` | Register on ServeMux |
+| `auth.AuthMiddleware()` | JWT validation middleware |
 | `auth.GetUser(r)` | Get current user from DB |
-| `auth.HealthHandler()` | Health check handler |
-| `idm.GetUserID(r)` | Get user ID from request |
+| `idm.GetUserID(r)` | Get user ID string |
+| `idm.GetUserIDFromContext(ctx)` | Get user UUID |
 
 ## Standalone Server
 
-Run as a standalone server:
+For testing or standalone deployment:
 
 ```bash
 cp .env.example .env
 go run ./cmd/simple-idm
 ```
 
-## Database Migrations
+## Manual Migrations (Optional)
 
-Migrations use [goose](https://github.com/pressly/goose):
+If you prefer to manage migrations externally:
 
 ```bash
-# Install goose CLI
+# Install goose
 make install-goose
 
-# Run all pending migrations
-make migrate-up
-
-# Rollback one migration
-make migrate-down
-
-# Show migration status
-make migrate-status
-
-# Create a new migration
-make migrate-create
-
-# Reset database (rollback all, then apply all)
-make migrate-reset
+# Run migrations from file
+DB_URL=postgres://localhost/mydb?sslmode=disable make migrate-up
 ```
-
-Set `DB_URL` environment variable or it defaults to `postgres://localhost/simple_idm?sslmode=disable`.
 
 ## License
 

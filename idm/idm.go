@@ -3,22 +3,32 @@
 //
 // Basic usage:
 //
+//	db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
+//
+//	// Run migrations (embedded in the library)
+//	if err := idm.Migrate(db); err != nil {
+//	    log.Fatal(err)
+//	}
+//
+//	// Create IDM instance
 //	auth, err := idm.New(idm.Config{
-//	    DB:        db,           // *sql.DB connection
-//	    JWTSecret: "secret-key", // At least 32 characters
+//	    DB:        db,
+//	    JWTSecret: "your-secret-key-at-least-32-chars",
 //	})
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //
-//	// Mount on your chi router
+//	// Mount on your router
+//	r := chi.NewRouter()
 //	r.Mount("/auth", auth.Router())
+//	http.ListenAndServe(":8080", r)
 //
 // With Google OAuth:
 //
 //	auth, err := idm.New(idm.Config{
 //	    DB:        db,
-//	    JWTSecret: "secret-key",
+//	    JWTSecret: "your-secret-key-at-least-32-chars",
 //	    Google: &idm.GoogleConfig{
 //	        ClientID:     "your-client-id",
 //	        ClientSecret: "your-client-secret",
