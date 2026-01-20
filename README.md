@@ -9,7 +9,6 @@ A minimal, embeddable identity management library for Go applications.
 - JWT access tokens + opaque refresh tokens
 - Session management with token revocation
 - User profile management
-- Embedded migrations - no external tools needed
 - Built on chi router with standard library compatibility
 
 ## Installation
@@ -19,6 +18,23 @@ go get github.com/tendant/simple-idm-slim
 ```
 
 ## Quick Start
+
+### 1. Run migrations
+
+Copy migrations to your project and run with your preferred tool:
+
+```bash
+# Using goose
+goose -dir migrations postgres "$DB_URL" up
+
+# Or using golang-migrate
+migrate -path migrations -database "$DB_URL" up
+
+# Or manually
+psql -d yourdb -f migrations/001_initial_schema.sql
+```
+
+### 2. Use in your app
 
 ```go
 package main
@@ -34,28 +50,22 @@ import (
 )
 
 func main() {
-    // Connect to database
     db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
 
-    // Run embedded migrations
-    if err := idm.Migrate(db); err != nil {
-        log.Fatal(err)
-    }
-
-    // Create IDM instance
-    auth, _ := idm.New(idm.Config{
+    // Create IDM instance (validates schema exists)
+    auth, err := idm.New(idm.Config{
         DB:        db,
         JWTSecret: "your-secret-key-at-least-32-characters",
     })
+    if err != nil {
+        log.Fatal(err) // Fails if migrations haven't been run
+    }
 
-    // Mount and serve
     r := chi.NewRouter()
     r.Mount("/auth", auth.Router())
     log.Fatal(http.ListenAndServe(":8080", r))
 }
 ```
-
-That's it! No external migration tools needed.
 
 ## API Endpoints
 
@@ -139,10 +149,7 @@ idm.New(idm.Config{
 
 | Function | Description |
 |----------|-------------|
-| `idm.Migrate(db)` | Run embedded migrations |
-| `idm.MigrateDown(db)` | Rollback one migration |
-| `idm.MigrateReset(db)` | Reset all migrations |
-| `idm.New(Config)` | Create IDM instance |
+| `idm.New(Config)` | Create IDM instance (validates schema) |
 | `auth.Router()` | Chi router with all routes |
 | `auth.AuthRouter()` | Chi router without /me |
 | `auth.MeRouter()` | Chi router for /me only |
@@ -153,25 +160,34 @@ idm.New(idm.Config{
 | `idm.GetUserID(r)` | Get user ID string |
 | `idm.GetUserIDFromContext(ctx)` | Get user UUID |
 
+## Database Migrations
+
+Migrations are in `migrations/` folder. Use your preferred tool:
+
+```bash
+# Install goose (if using goose)
+make install-goose
+
+# Run migrations
+make migrate-up
+
+# Rollback
+make migrate-down
+
+# Status
+make migrate-status
+```
+
+Set `DB_URL` environment variable or it defaults to `postgres://localhost/simple_idm?sslmode=disable`.
+
 ## Standalone Server
 
 For testing or standalone deployment:
 
 ```bash
 cp .env.example .env
+make migrate-up
 go run ./cmd/simple-idm
-```
-
-## Manual Migrations (Optional)
-
-If you prefer to manage migrations externally:
-
-```bash
-# Install goose
-make install-goose
-
-# Run migrations from file
-DB_URL=postgres://localhost/mydb?sslmode=disable make migrate-up
 ```
 
 ## License

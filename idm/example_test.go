@@ -11,24 +11,19 @@ import (
 )
 
 func Example() {
-	// Connect to database
+	// Connect to database (migrations must be run first)
 	db, err := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Run embedded migrations
-	if err := idm.Migrate(db); err != nil {
-		log.Fatal(err)
-	}
-
-	// Create IDM instance
+	// Create IDM instance (validates schema exists)
 	auth, err := idm.New(idm.Config{
 		DB:        db,
 		JWTSecret: "your-secret-key-at-least-32-characters",
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err) // Fails if migrations haven't been run
 	}
 
 	// Mount on chi router
@@ -41,7 +36,6 @@ func Example() {
 
 func Example_withStdlib() {
 	db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
-	idm.Migrate(db)
 
 	auth, _ := idm.New(idm.Config{
 		DB:        db,
@@ -55,30 +49,8 @@ func Example_withStdlib() {
 	fmt.Println("Server with stdlib starting on :8080")
 }
 
-func Example_withChiRouter() {
-	db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
-	idm.Migrate(db)
-
-	auth, _ := idm.New(idm.Config{
-		DB:        db,
-		JWTSecret: "your-secret-key-at-least-32-characters",
-	})
-
-	r := chi.NewRouter()
-
-	// Mount auth routes under /auth
-	r.Mount("/auth", auth.Router())
-
-	// Or mount auth and me separately
-	r.Mount("/api/auth", auth.AuthRouter())
-	r.Mount("/api/user", auth.MeRouter())
-
-	fmt.Println("Server with chi router starting on :8080")
-}
-
 func Example_protectRoutes() {
 	db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
-	idm.Migrate(db)
 
 	auth, _ := idm.New(idm.Config{
 		DB:        db,
@@ -108,7 +80,6 @@ func Example_protectRoutes() {
 
 func Example_withGoogle() {
 	db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
-	idm.Migrate(db)
 
 	auth, err := idm.New(idm.Config{
 		DB:        db,

@@ -1,25 +1,23 @@
 // Package idm provides a minimal identity management library with
 // password and Google OAuth authentication.
 //
+// Setup:
+//
+//  1. Run migrations from migrations/ folder using your preferred tool
+//  2. Create IDM instance and mount routes
+//
 // Basic usage:
 //
 //	db, _ := sql.Open("postgres", "postgres://localhost/myapp?sslmode=disable")
 //
-//	// Run migrations (embedded in the library)
-//	if err := idm.Migrate(db); err != nil {
-//	    log.Fatal(err)
-//	}
-//
-//	// Create IDM instance
 //	auth, err := idm.New(idm.Config{
 //	    DB:        db,
 //	    JWTSecret: "your-secret-key-at-least-32-chars",
 //	})
 //	if err != nil {
-//	    log.Fatal(err)
+//	    log.Fatal(err) // Will fail if migrations haven't been run
 //	}
 //
-//	// Mount on your router
 //	r := chi.NewRouter()
 //	r.Mount("/auth", auth.Router())
 //	http.ListenAndServe(":8080", r)
@@ -41,6 +39,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -104,12 +103,19 @@ type IDM struct {
 }
 
 // New creates a new IDM instance with the given configuration.
+// Returns an error if required database tables don't exist.
+// Run migrations first - see migrations/ folder for SQL files.
 func New(cfg Config) (*IDM, error) {
 	if err := validateConfig(&cfg); err != nil {
 		return nil, err
 	}
 
 	applyDefaults(&cfg)
+
+	// Validate schema exists
+	if err := validateSchema(cfg.DB); err != nil {
+		return nil, err
+	}
 
 	// Initialize repositories
 	usersRepo := repository.NewUsersRepository(cfg.DB)
@@ -393,4 +399,28 @@ func applyDefaults(cfg *Config) {
 	if cfg.Logger == nil {
 		cfg.Logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	}
+}
+
+// validateSchema checks that required database tables exist.
+func validateSchema(db *sql.DB) error {
+	requiredTables := []string{"users", "user_password", "user_identities", "sessions"}
+
+	query := `
+		SELECT table_name
+		FROM information_schema.tables
+		WHERE table_schema = 'public' AND table_name = $1
+	`
+
+	for _, table := range requiredTables {
+		var name string
+		err := db.QueryRow(query, table).Scan(&name)
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("idm: missing table '%s' - run migrations first (see migrations/ folder)", table)
+		}
+		if err != nil {
+			return fmt.Errorf("idm: failed to check schema: %w", err)
+		}
+	}
+
+	return nil
 }
