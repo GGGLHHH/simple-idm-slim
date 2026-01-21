@@ -19,6 +19,7 @@ type Handler struct {
 	verificationService *auth.VerificationService
 	emailService        *notification.EmailService
 	sessionService      *auth.SessionService
+	passwordService     *auth.PasswordService
 	appBaseURL          string
 }
 
@@ -27,6 +28,7 @@ func NewHandler(
 	verificationService *auth.VerificationService,
 	emailService *notification.EmailService,
 	sessionService *auth.SessionService,
+	passwordService *auth.PasswordService,
 	appBaseURL string,
 ) *Handler {
 	return &Handler{
@@ -34,6 +36,7 @@ func NewHandler(
 		verificationService: verificationService,
 		emailService:        emailService,
 		sessionService:      sessionService,
+		passwordService:     passwordService,
 		appBaseURL:          appBaseURL,
 	}
 }
@@ -136,5 +139,72 @@ func (h *Handler) ResendVerificationEmail(w http.ResponseWriter, r *http.Request
 
 	httputil.JSON(w, http.StatusOK, MessageResponse{
 		Message: "Verification email sent",
+	})
+}
+
+type RequestVerificationEmailRequest struct {
+	Email string `json:"email"`
+}
+
+// RequestVerificationEmail allows users to request a new verification email.
+// POST /v1/auth/request-verification
+// Public endpoint - requires only email address.
+func (h *Handler) RequestVerificationEmail(w http.ResponseWriter, r *http.Request) {
+	var req RequestVerificationEmailRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.Error(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.Email == "" {
+		httputil.Error(w, http.StatusBadRequest, "email is required")
+		return
+	}
+
+	if h.emailService == nil {
+		httputil.Error(w, http.StatusServiceUnavailable, "email service not configured")
+		return
+	}
+
+	// Get user by email
+	user, err := h.passwordService.GetUserByEmail(r.Context(), req.Email)
+	if err != nil {
+		// Return success even if user not found to prevent email enumeration
+		httputil.JSON(w, http.StatusOK, MessageResponse{
+			Message: "If the email exists in our system, a verification email will be sent.",
+		})
+		return
+	}
+
+	if user.EmailVerified {
+		httputil.JSON(w, http.StatusOK, MessageResponse{
+			Message: "If the email exists in our system, a verification email will be sent.",
+		})
+		return
+	}
+
+	// Create and send verification token
+	opts := auth.CreateVerificationTokenOpts{
+		IP:        r.RemoteAddr,
+		UserAgent: r.UserAgent(),
+	}
+	token, err := h.verificationService.CreateEmailVerificationToken(r.Context(), user.ID, opts)
+	if err != nil {
+		h.logger.Error("failed to create verification token", "error", err, "user_id", user.ID)
+		httputil.Error(w, http.StatusInternalServerError, "failed to create verification token")
+		return
+	}
+
+	verifyURL := fmt.Sprintf("%s/auth/verify-email?token=%s", h.appBaseURL, token)
+	if err := h.emailService.SendVerificationEmail(user.Email, verifyURL); err != nil {
+		h.logger.Error("failed to send verification email", "error", err, "user_id", user.ID)
+		httputil.Error(w, http.StatusInternalServerError, "failed to send verification email")
+		return
+	}
+
+	h.logger.Info("verification email sent", "user_id", user.ID)
+
+	httputil.JSON(w, http.StatusOK, MessageResponse{
+		Message: "If the email exists in our system, a verification email will be sent.",
 	})
 }

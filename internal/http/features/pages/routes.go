@@ -11,4 +11,5 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/verify-email", h.VerifyEmail)
 	mux.HandleFunc("GET /auth/reset-password", h.ResetPassword)
 	mux.HandleFunc("GET /auth/reset-password/confirm", h.ResetPasswordConfirm)
+	mux.HandleFunc("GET /auth/request-verification", h.RequestVerification)
 }

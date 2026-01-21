@@ -69,6 +69,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			cfg.VerificationService,
 			cfg.EmailService,
 			cfg.SessionService,
+			cfg.PasswordService,
 			cfg.AppBaseURL,
 		)
 		authMiddleware := middleware.Auth(cfg.SessionService)

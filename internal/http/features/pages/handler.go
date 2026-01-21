@@ -16,7 +16,7 @@ func NewHandler(templatesDir string) (*Handler, error) {
 	templates := make(map[string]*template.Template)
 
 	// List of page templates
-	pages := []string{"register", "login", "verify-email", "reset-password", "reset-password-confirm"}
+	pages := []string{"register", "login", "verify-email", "reset-password", "reset-password-confirm", "request-verification"}
 
 	layoutPath := filepath.Join(templatesDir, "layout.html")
 
@@ -63,6 +63,11 @@ func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 // ResetPasswordConfirm renders the password reset confirmation page.
 func (h *Handler) ResetPasswordConfirm(w http.ResponseWriter, r *http.Request) {
 	h.render(w, "reset-password-confirm", PageData{Title: "Set New Password"})
+}
+
+// RequestVerification renders the request verification email page.
+func (h *Handler) RequestVerification(w http.ResponseWriter, r *http.Request) {
+	h.render(w, "request-verification", PageData{Title: "Resend Verification Email"})
 }
 
 func (h *Handler) render(w http.ResponseWriter, templateName string, data PageData) {
