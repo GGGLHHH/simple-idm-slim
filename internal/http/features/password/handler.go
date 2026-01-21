@@ -85,11 +85,6 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(req.Password) < 8 {
-		httputil.Error(w, http.StatusBadRequest, "password must be at least 8 characters")
-		return
-	}
-
 	user, err := h.passwordService.Register(r.Context(), req.Email, req.Password, req.Name)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
@@ -292,11 +287,6 @@ func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	if req.NewPassword == "" {
 		httputil.Error(w, http.StatusBadRequest, "new password is required")
-		return
-	}
-
-	if len(req.NewPassword) < 8 {
-		httputil.Error(w, http.StatusBadRequest, "password must be at least 8 characters")
 		return
 	}
 
