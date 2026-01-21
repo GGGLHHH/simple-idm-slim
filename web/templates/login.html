@@ -63,7 +63,15 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             }, 1000);
         } else {
             alert.className = 'alert alert-error';
-            alert.textContent = result.error || 'Login failed. Please check your credentials.';
+            const errorMsg = result.error || 'Login failed. Please check your credentials.';
+
+            // If email verification is required, show link to resend verification
+            if (errorMsg.toLowerCase().includes('verification required')) {
+                alert.innerHTML = errorMsg + ' <a href="/auth/request-verification" style="color: #fff; text-decoration: underline;">Resend verification email</a>';
+            } else {
+                alert.textContent = errorMsg;
+            }
+
             alert.style.display = 'block';
             container.classList.remove('loading');
         }

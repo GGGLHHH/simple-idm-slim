@@ -154,6 +154,18 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if email is verified
+	user, err := h.passwordService.GetUserByEmail(r.Context(), req.Email)
+	if err != nil {
+		httputil.Error(w, http.StatusInternalServerError, "failed to get user")
+		return
+	}
+
+	if !user.EmailVerified {
+		httputil.Error(w, http.StatusForbidden, "email verification required. Please check your email for verification link")
+		return
+	}
+
 	opts := auth.IssueSessionOpts{
 		IP:        r.RemoteAddr,
 		UserAgent: r.UserAgent(),

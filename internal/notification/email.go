@@ -56,7 +56,13 @@ func (s *EmailService) sendEmail(to, subject, body string) error {
 	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
 		from, to, subject, body)
 
-	auth := smtp.PlainAuth("", s.config.User, s.config.Password, s.config.Host)
 	addr := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
+
+	// Only use auth if credentials are provided (local mail servers may not need auth)
+	var auth smtp.Auth
+	if s.config.User != "" && s.config.Password != "" {
+		auth = smtp.PlainAuth("", s.config.User, s.config.Password, s.config.Host)
+	}
+
 	return smtp.SendMail(addr, auth, s.config.From, []string{to}, []byte(msg))
 }

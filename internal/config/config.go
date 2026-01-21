@@ -107,7 +107,7 @@ func (c *Config) HasGoogleOAuth() bool {
 
 // HasSMTP returns true if SMTP is configured.
 func (c *Config) HasSMTP() bool {
-	return c.SMTPHost != "" && c.SMTPUser != "" && c.SMTPPassword != ""
+	return c.SMTPHost != ""
 }
 
 func getEnv(key, defaultValue string) string {

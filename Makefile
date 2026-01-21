@@ -4,7 +4,7 @@
 -include .env
 export
 
-.PHONY: build run test test-cover lint fmt clean help
+.PHONY: build run dev test test-cover lint fmt clean help
 .PHONY: migrate-up migrate-down migrate-status migrate-create migrate-reset
 .PHONY: postgres-start postgres-stop postgres-logs
 
@@ -24,6 +24,10 @@ build:
 # Run the standalone server
 run:
 	go run ./cmd/simple-idm
+
+# Run the server with auto-reload (requires arelo)
+dev:
+	arelo -p '**/*.go' -p '**/*.html' -p '**/*.css' -p '**/*.js' -p '.env' -i '**/*_test.go' -i '**/bin/**' -d 500ms -- go run ./cmd/simple-idm
 
 # Run all tests
 test:
@@ -105,6 +109,7 @@ help:
 	@echo "  Build & Run:"
 	@echo "    build            - Build the standalone server"
 	@echo "    run              - Run the standalone server"
+	@echo "    dev              - Run server with auto-reload (arelo)"
 	@echo ""
 	@echo "  Testing:"
 	@echo "    test             - Run all tests"
