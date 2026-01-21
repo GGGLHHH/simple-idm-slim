@@ -18,6 +18,8 @@ import (
 type Handler struct {
 	logger              *slog.Logger
 	users               *repository.UsersRepository
+	passwordService     *auth.PasswordService
+	sessionService      *auth.SessionService
 	verificationService *auth.VerificationService
 	emailService        *notification.EmailService
 	appBaseURL          string
@@ -27,6 +29,8 @@ type Handler struct {
 func NewHandler(
 	logger *slog.Logger,
 	users *repository.UsersRepository,
+	passwordService *auth.PasswordService,
+	sessionService *auth.SessionService,
 	verificationService *auth.VerificationService,
 	emailService *notification.EmailService,
 	appBaseURL string,
@@ -34,6 +38,8 @@ func NewHandler(
 	return &Handler{
 		logger:              logger,
 		users:               users,
+		passwordService:     passwordService,
+		sessionService:      sessionService,
 		verificationService: verificationService,
 		emailService:        emailService,
 		appBaseURL:          appBaseURL,
@@ -52,6 +58,11 @@ type UserResponse struct {
 type UpdateRequest struct {
 	Name  *string `json:"name,omitempty"`
 	Email *string `json:"email,omitempty"`
+}
+
+// DeleteAccountRequest represents an account deletion request.
+type DeleteAccountRequest struct {
+	Password string `json:"password"`
 }
 
 // GetMe returns the current user's profile.

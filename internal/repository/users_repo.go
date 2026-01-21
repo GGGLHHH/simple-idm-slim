@@ -130,6 +130,25 @@ func (r *UsersRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// Delete permanently deletes a user and all related data.
+// This will cascade delete credentials, identities, sessions, and verification tokens
+// based on database foreign key constraints.
+func (r *UsersRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	query := `DELETE FROM users WHERE id = $1`
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return domain.ErrUserNotFound
+	}
+	return nil
+}
+
 // ExistsByEmail checks if a user exists by email.
 func (r *UsersRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	query := `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1 AND deleted_at IS NULL)`

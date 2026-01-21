@@ -109,12 +109,15 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	meHandler := me.NewHandler(
 		cfg.Logger,
 		cfg.UsersRepo,
+		cfg.PasswordService,
+		cfg.SessionService,
 		cfg.VerificationService,
 		cfg.EmailService,
 		cfg.AppBaseURL,
 	)
 	r.With(middleware.Auth(cfg.SessionService)).Get("/v1/me", meHandler.GetMe)
 	r.With(middleware.Auth(cfg.SessionService)).Patch("/v1/me", meHandler.UpdateMe)
+	r.With(middleware.Auth(cfg.SessionService)).Delete("/v1/me", meHandler.DeleteMe)
 
 	// Email verification routes (if email service is configured)
 	if cfg.EmailService != nil {
