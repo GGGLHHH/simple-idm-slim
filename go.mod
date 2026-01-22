@@ -1,6 +1,6 @@
 module github.com/tendant/simple-idm-slim
 
-go 1.25.6
+go 1.22
 
 require (
 	github.com/go-chi/chi/v5 v5.2.4
