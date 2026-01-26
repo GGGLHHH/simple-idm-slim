@@ -14,8 +14,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/tendant/simple-idm-slim/internal/domain"
-	"github.com/tendant/simple-idm-slim/internal/repository"
+	"github.com/tendant/simple-idm-slim/pkg/domain"
+	"github.com/tendant/simple-idm-slim/pkg/repository"
 )
 
 const (

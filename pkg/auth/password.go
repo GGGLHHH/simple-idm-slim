@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tendant/simple-idm-slim/internal/domain"
-	"github.com/tendant/simple-idm-slim/internal/repository"
+	"github.com/tendant/simple-idm-slim/pkg/domain"
+	"github.com/tendant/simple-idm-slim/pkg/repository"
 	"golang.org/x/crypto/argon2"
 )
 

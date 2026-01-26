@@ -48,14 +48,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
-	"github.com/tendant/simple-idm-slim/internal/auth"
+	"github.com/tendant/simple-idm-slim/pkg/auth"
 	"github.com/tendant/simple-idm-slim/internal/http/features/google"
 	"github.com/tendant/simple-idm-slim/internal/http/features/me"
 	"github.com/tendant/simple-idm-slim/internal/http/features/password"
 	"github.com/tendant/simple-idm-slim/internal/http/features/session"
 	"github.com/tendant/simple-idm-slim/internal/http/middleware"
 	"github.com/tendant/simple-idm-slim/internal/httputil"
-	"github.com/tendant/simple-idm-slim/internal/repository"
+	"github.com/tendant/simple-idm-slim/pkg/repository"
 )
 
 // Config holds the configuration for the IDM library.

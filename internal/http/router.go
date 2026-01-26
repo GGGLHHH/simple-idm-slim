@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/httprate"
-	"github.com/tendant/simple-idm-slim/internal/auth"
+	"github.com/tendant/simple-idm-slim/pkg/auth"
 	"github.com/tendant/simple-idm-slim/internal/http/features/email"
 	"github.com/tendant/simple-idm-slim/internal/http/features/google"
 	"github.com/tendant/simple-idm-slim/internal/http/features/me"
@@ -17,7 +17,7 @@ import (
 	"github.com/tendant/simple-idm-slim/internal/http/middleware"
 	"github.com/tendant/simple-idm-slim/internal/httputil"
 	"github.com/tendant/simple-idm-slim/internal/notification"
-	"github.com/tendant/simple-idm-slim/internal/repository"
+	"github.com/tendant/simple-idm-slim/pkg/repository"
 )
 
 // RouterConfig holds configuration for the router.

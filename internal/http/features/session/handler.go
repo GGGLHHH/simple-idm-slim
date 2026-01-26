@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/tendant/simple-idm-slim/internal/auth"
-	"github.com/tendant/simple-idm-slim/internal/domain"
+	"github.com/tendant/simple-idm-slim/pkg/auth"
+	"github.com/tendant/simple-idm-slim/pkg/domain"
 	"github.com/tendant/simple-idm-slim/internal/http/middleware"
 	"github.com/tendant/simple-idm-slim/internal/httputil"
 )

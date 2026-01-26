@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/tendant/simple-idm-slim/internal/domain"
+	"github.com/tendant/simple-idm-slim/pkg/domain"
 )
 
 var (

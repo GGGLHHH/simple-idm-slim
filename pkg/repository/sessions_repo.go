@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tendant/simple-idm-slim/internal/domain"
+	"github.com/tendant/simple-idm-slim/pkg/domain"
 )
 
 // SessionsRepository handles session persistence.

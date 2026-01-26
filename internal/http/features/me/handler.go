@@ -6,12 +6,12 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/tendant/simple-idm-slim/internal/auth"
-	"github.com/tendant/simple-idm-slim/internal/domain"
+	"github.com/tendant/simple-idm-slim/pkg/auth"
+	"github.com/tendant/simple-idm-slim/pkg/domain"
 	"github.com/tendant/simple-idm-slim/internal/http/middleware"
 	"github.com/tendant/simple-idm-slim/internal/httputil"
 	"github.com/tendant/simple-idm-slim/internal/notification"
-	"github.com/tendant/simple-idm-slim/internal/repository"
+	"github.com/tendant/simple-idm-slim/pkg/repository"
 )
 
 // Handler handles user profile endpoints.

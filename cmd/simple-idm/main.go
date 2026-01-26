@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/tendant/simple-idm-slim/internal/auth"
+	"github.com/tendant/simple-idm-slim/pkg/auth"
 	"github.com/tendant/simple-idm-slim/internal/config"
 	httpserver "github.com/tendant/simple-idm-slim/internal/http"
 	"github.com/tendant/simple-idm-slim/internal/notification"
-	"github.com/tendant/simple-idm-slim/internal/repository"
+	"github.com/tendant/simple-idm-slim/pkg/repository"
 )
 
 func main() {

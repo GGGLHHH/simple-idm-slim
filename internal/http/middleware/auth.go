@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/tendant/simple-idm-slim/internal/auth"
+	"github.com/tendant/simple-idm-slim/pkg/auth"
 	"github.com/tendant/simple-idm-slim/internal/httputil"
 )
 

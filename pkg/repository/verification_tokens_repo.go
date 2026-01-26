@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/tendant/simple-idm-slim/internal/domain"
+	"github.com/tendant/simple-idm-slim/pkg/domain"
 )
 
 // VerificationTokensRepository handles verification token persistence.

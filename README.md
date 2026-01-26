@@ -5,11 +5,13 @@ A minimal, embeddable identity management library for Go applications.
 ## Features
 
 - Email + password authentication with Argon2id hashing
+- Optional username support (login with email or username)
 - Google OAuth authentication
 - JWT access tokens + opaque refresh tokens
 - Session management with token revocation
 - User profile management
 - Built on chi router with standard library compatibility
+- **Extensible**: Core packages in `pkg/` allow custom implementations
 
 ## Installation
 
@@ -179,6 +181,68 @@ make migrate-status
 ```
 
 Set `DB_URL` environment variable or it defaults to `postgres://localhost/simple_idm?sslmode=disable`.
+
+## Extensibility
+
+Core packages are in `pkg/` and can be extended or replaced:
+
+### Custom User Fields
+
+```go
+import "github.com/tendant/simple-idm-slim/pkg/domain"
+
+type MyUser struct {
+    domain.User
+    CompanyID   string
+    Role        string
+    Permissions []string
+}
+```
+
+### Custom Storage Backend
+
+```go
+import (
+    "github.com/tendant/simple-idm-slim/pkg/repository"
+    "github.com/tendant/simple-idm-slim/pkg/domain"
+)
+
+// Implement repository methods for MongoDB, DynamoDB, etc.
+type MongoUsersRepo struct {
+    client *mongo.Client
+}
+
+func (r *MongoUsersRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
+    // Custom implementation
+}
+```
+
+### Custom Authentication Logic
+
+```go
+import "github.com/tendant/simple-idm-slim/pkg/auth"
+
+// Add MFA, custom password hashing, etc.
+type MFAPasswordService struct {
+    *auth.PasswordService
+    totpService *TOTPService
+}
+```
+
+## Package Structure
+
+```
+pkg/
+├── domain/          - Domain models (User, Session, etc.)
+├── repository/      - Data access layer
+└── auth/            - Authentication services
+
+internal/
+├── http/            - HTTP handlers (Chi-specific)
+├── httputil/        - HTTP utilities
+├── notification/    - Email service
+└── config/          - Configuration
+```
 
 ## Standalone Server
 

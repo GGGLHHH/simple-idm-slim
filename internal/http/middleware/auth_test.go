@@ -9,7 +9,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/tendant/simple-idm-slim/internal/auth"
+	"github.com/tendant/simple-idm-slim/pkg/auth"
 )
 
 func createTestSessionService(secret []byte) *auth.SessionService {
