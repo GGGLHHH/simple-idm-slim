@@ -38,14 +38,31 @@ func NewPasswordService(db *sql.DB, users *repository.UsersRepository, creds *re
 }
 
 // Register creates a new user with password credentials.
-func (s *PasswordService) Register(ctx context.Context, email, password, name string) (*domain.User, error) {
-	// Check if user already exists
+func (s *PasswordService) Register(ctx context.Context, email, password, name string, username *string) (*domain.User, error) {
+	// Check if user already exists by email
 	exists, err := s.users.ExistsByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
 	if exists {
 		return nil, domain.ErrUserAlreadyExists
+	}
+
+	// Validate and check username if provided
+	if username != nil && *username != "" {
+		// Validate username format
+		if err := ValidateUsername(*username); err != nil {
+			return nil, err
+		}
+
+		// Check if username already exists
+		exists, err := s.users.ExistsByUsername(ctx, *username)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, domain.ErrUsernameAlreadyExists
+		}
 	}
 
 	// Hash password
@@ -58,6 +75,7 @@ func (s *PasswordService) Register(ctx context.Context, email, password, name st
 	user := &domain.User{
 		ID:            uuid.New(),
 		Email:         email,
+		Username:      username,
 		EmailVerified: false,
 		Name:          &name,
 		CreatedAt:     now,
@@ -84,16 +102,16 @@ func (s *PasswordService) Register(ctx context.Context, email, password, name st
 	return user, nil
 }
 
-// Authenticate verifies email and password, returns user ID on success.
+// Authenticate verifies identifier (email or username) and password, returns user ID on success.
 // Implements account lockout after 5 failed attempts with 15-minute lockout duration.
-func (s *PasswordService) Authenticate(ctx context.Context, email, password string) (uuid.UUID, error) {
+func (s *PasswordService) Authenticate(ctx context.Context, identifier, password string) (uuid.UUID, error) {
 	const (
 		maxFailedAttempts = 5
 		lockoutDuration   = 15 * time.Minute
 	)
 
-	// Find user by email
-	user, err := s.users.GetByEmail(ctx, email)
+	// Find user by email or username
+	user, err := s.users.GetByEmailOrUsername(ctx, identifier)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
 			return uuid.Nil, domain.ErrInvalidCredentials
@@ -133,6 +151,11 @@ func (s *PasswordService) Authenticate(ctx context.Context, email, password stri
 // GetUserByEmail retrieves a user by email address.
 func (s *PasswordService) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
 	return s.users.GetByEmail(ctx, email)
+}
+
+// GetUserByID retrieves a user by ID.
+func (s *PasswordService) GetUserByID(ctx context.Context, userID uuid.UUID) (*domain.User, error) {
+	return s.users.GetByID(ctx, userID)
 }
 
 // ChangePassword changes a user's password.

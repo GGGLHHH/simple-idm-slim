@@ -50,6 +50,7 @@ func NewHandler(
 type UserResponse struct {
 	ID            string  `json:"id"`
 	Email         string  `json:"email"`
+	Username      *string `json:"username,omitempty"`
 	EmailVerified bool    `json:"email_verified"`
 	Name          *string `json:"name,omitempty"`
 }
@@ -83,6 +84,7 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, UserResponse{
 		ID:            user.ID.String(),
 		Email:         user.Email,
+		Username:      user.Username,
 		EmailVerified: user.EmailVerified,
 		Name:          user.Name,
 	})
@@ -164,6 +166,7 @@ func (h *Handler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	response := UserResponse{
 		ID:            user.ID.String(),
 		Email:         user.Email,
+		Username:      user.Username,
 		EmailVerified: user.EmailVerified,
 		Name:          user.Name,
 	}

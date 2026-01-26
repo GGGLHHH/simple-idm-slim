@@ -6,6 +6,7 @@ import "errors"
 var (
 	ErrUserNotFound              = errors.New("user not found")
 	ErrUserAlreadyExists         = errors.New("user already exists")
+	ErrUsernameAlreadyExists     = errors.New("username already exists")
 	ErrInvalidCredentials        = errors.New("invalid credentials")
 	ErrAccountLocked             = errors.New("account locked due to too many failed login attempts")
 	ErrSessionNotFound           = errors.New("session not found")
@@ -22,7 +23,8 @@ var (
 
 // Validation errors
 var (
-	ErrInvalidEmail    = errors.New("invalid email address")
-	ErrWeakPassword    = errors.New("password does not meet requirements")
+	ErrInvalidEmail     = errors.New("invalid email address")
+	ErrInvalidUsername  = errors.New("invalid username format")
+	ErrWeakPassword     = errors.New("password does not meet requirements")
 	ErrEmailNotVerified = errors.New("email not verified")
 )

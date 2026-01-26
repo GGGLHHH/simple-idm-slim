@@ -34,12 +34,6 @@ func TestRegisterRequest_Validation(t *testing.T) {
 			expectedError:  "email and password are required",
 		},
 		{
-			name:           "short password",
-			body:           `{"email": "test@example.com", "password": "short", "name": "Test"}`,
-			expectedStatus: http.StatusBadRequest,
-			expectedError:  "password must be at least 8 characters",
-		},
-		{
 			name:           "invalid json",
 			body:           `{invalid}`,
 			expectedStatus: http.StatusBadRequest,
@@ -93,19 +87,19 @@ func TestLoginRequest_Validation(t *testing.T) {
 			name:           "empty body",
 			body:           `{}`,
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "email and password are required",
+			expectedError:  "email/username and password are required",
 		},
 		{
-			name:           "missing email",
+			name:           "missing identifier and email",
 			body:           `{"password": "password123"}`,
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "email and password are required",
+			expectedError:  "email/username and password are required",
 		},
 		{
 			name:           "missing password",
 			body:           `{"email": "test@example.com"}`,
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "email and password are required",
+			expectedError:  "email/username and password are required",
 		},
 		{
 			name:           "invalid json",

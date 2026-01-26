@@ -10,6 +10,7 @@ import (
 type User struct {
 	ID                   uuid.UUID
 	Email                string
+	Username             *string
 	EmailVerified        bool
 	Name                 *string
 	FailedLoginAttempts  int

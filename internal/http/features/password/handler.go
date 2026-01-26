@@ -49,15 +49,17 @@ func NewHandler(
 
 // RegisterRequest represents a registration request.
 type RegisterRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
+	Email    string  `json:"email"`
+	Username *string `json:"username,omitempty"`
+	Password string  `json:"password"`
+	Name     string  `json:"name"`
 }
 
 // LoginRequest represents a login request.
 type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Identifier string `json:"identifier,omitempty"` // New: email or username
+	Email      string `json:"email,omitempty"`      // Legacy: backward compatibility
+	Password   string `json:"password"`
 }
 
 // TokenResponse represents a token response (for mobile clients).
@@ -85,10 +87,24 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.passwordService.Register(r.Context(), req.Email, req.Password, req.Name)
+	// Normalize username: empty string -> nil
+	var username *string
+	if req.Username != nil && *req.Username != "" {
+		username = req.Username
+	}
+
+	user, err := h.passwordService.Register(r.Context(), req.Email, req.Password, req.Name, username)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
 			httputil.Error(w, http.StatusConflict, "user already exists")
+			return
+		}
+		if errors.Is(err, domain.ErrUsernameAlreadyExists) {
+			httputil.Error(w, http.StatusConflict, "username already taken")
+			return
+		}
+		if errors.Is(err, domain.ErrInvalidUsername) {
+			httputil.Error(w, http.StatusBadRequest, "invalid username format: must be 3-30 characters, alphanumeric/underscore/hyphen, start with alphanumeric")
 			return
 		}
 		httputil.Error(w, http.StatusInternalServerError, "registration failed")
@@ -139,15 +155,21 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Email == "" || req.Password == "" {
-		httputil.Error(w, http.StatusBadRequest, "email and password are required")
+	// Support both 'identifier' (new) and 'email' (legacy) fields
+	identifier := req.Identifier
+	if identifier == "" {
+		identifier = req.Email
+	}
+
+	if identifier == "" || req.Password == "" {
+		httputil.Error(w, http.StatusBadRequest, "email/username and password are required")
 		return
 	}
 
-	userID, err := h.passwordService.Authenticate(r.Context(), req.Email, req.Password)
+	userID, err := h.passwordService.Authenticate(r.Context(), identifier, req.Password)
 	if err != nil {
 		if errors.Is(err, domain.ErrInvalidCredentials) {
-			httputil.Error(w, http.StatusUnauthorized, "invalid email or password")
+			httputil.Error(w, http.StatusUnauthorized, "invalid email/username or password")
 			return
 		}
 		if errors.Is(err, domain.ErrAccountLocked) {
@@ -159,7 +181,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if email is verified
-	user, err := h.passwordService.GetUserByEmail(r.Context(), req.Email)
+	user, err := h.passwordService.GetUserByID(r.Context(), userID)
 	if err != nil {
 		httputil.Error(w, http.StatusInternalServerError, "failed to get user")
 		return

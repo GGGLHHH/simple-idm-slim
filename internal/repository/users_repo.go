@@ -23,11 +23,11 @@ func NewUsersRepository(db *sql.DB) *UsersRepository {
 // Create creates a new user.
 func (r *UsersRepository) Create(ctx context.Context, user *domain.User) error {
 	query := `
-		INSERT INTO users (id, email, email_verified, name, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO users (id, email, username, email_verified, name, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 	_, err := r.db.ExecContext(ctx, query,
-		user.ID, user.Email, user.EmailVerified, user.Name, user.CreatedAt, user.UpdatedAt,
+		user.ID, user.Email, user.Username, user.EmailVerified, user.Name, user.CreatedAt, user.UpdatedAt,
 	)
 	return err
 }
@@ -35,11 +35,11 @@ func (r *UsersRepository) Create(ctx context.Context, user *domain.User) error {
 // CreateTx creates a new user within a transaction.
 func (r *UsersRepository) CreateTx(ctx context.Context, tx *sql.Tx, user *domain.User) error {
 	query := `
-		INSERT INTO users (id, email, email_verified, name, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO users (id, email, username, email_verified, name, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 	_, err := tx.ExecContext(ctx, query,
-		user.ID, user.Email, user.EmailVerified, user.Name, user.CreatedAt, user.UpdatedAt,
+		user.ID, user.Email, user.Username, user.EmailVerified, user.Name, user.CreatedAt, user.UpdatedAt,
 	)
 	return err
 }
@@ -47,14 +47,14 @@ func (r *UsersRepository) CreateTx(ctx context.Context, tx *sql.Tx, user *domain
 // GetByID retrieves a user by ID.
 func (r *UsersRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
 	query := `
-		SELECT id, email, email_verified, name, failed_login_attempts, locked_until,
+		SELECT id, email, username, email_verified, name, failed_login_attempts, locked_until,
 		       created_at, updated_at, deleted_at
 		FROM users
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 	user := &domain.User{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&user.ID, &user.Email, &user.EmailVerified, &user.Name,
+		&user.ID, &user.Email, &user.Username, &user.EmailVerified, &user.Name,
 		&user.FailedLoginAttempts, &user.LockedUntil,
 		&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
 	)
@@ -70,14 +70,14 @@ func (r *UsersRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Us
 // GetByEmail retrieves a user by email.
 func (r *UsersRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	query := `
-		SELECT id, email, email_verified, name, failed_login_attempts, locked_until,
+		SELECT id, email, username, email_verified, name, failed_login_attempts, locked_until,
 		       created_at, updated_at, deleted_at
 		FROM users
 		WHERE email = $1 AND deleted_at IS NULL
 	`
 	user := &domain.User{}
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
-		&user.ID, &user.Email, &user.EmailVerified, &user.Name,
+		&user.ID, &user.Email, &user.Username, &user.EmailVerified, &user.Name,
 		&user.FailedLoginAttempts, &user.LockedUntil,
 		&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
 	)
@@ -94,12 +94,12 @@ func (r *UsersRepository) GetByEmail(ctx context.Context, email string) (*domain
 func (r *UsersRepository) Update(ctx context.Context, user *domain.User) error {
 	query := `
 		UPDATE users
-		SET email = $2, email_verified = $3, name = $4,
-		    failed_login_attempts = $5, locked_until = $6, updated_at = $7
+		SET email = $2, username = $3, email_verified = $4, name = $5,
+		    failed_login_attempts = $6, locked_until = $7, updated_at = $8
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 	result, err := r.db.ExecContext(ctx, query,
-		user.ID, user.Email, user.EmailVerified, user.Name,
+		user.ID, user.Email, user.Username, user.EmailVerified, user.Name,
 		user.FailedLoginAttempts, user.LockedUntil, time.Now(),
 	)
 	if err != nil {
@@ -184,10 +184,65 @@ func (r *UsersRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// GetByUsername retrieves a user by username.
+func (r *UsersRepository) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
+	query := `
+		SELECT id, email, username, email_verified, name, failed_login_attempts, locked_until,
+		       created_at, updated_at, deleted_at
+		FROM users
+		WHERE username = $1 AND deleted_at IS NULL
+	`
+	user := &domain.User{}
+	err := r.db.QueryRowContext(ctx, query, username).Scan(
+		&user.ID, &user.Email, &user.Username, &user.EmailVerified, &user.Name,
+		&user.FailedLoginAttempts, &user.LockedUntil,
+		&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, domain.ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// GetByEmailOrUsername retrieves a user by email or username.
+// Tries email first if identifier contains '@', otherwise tries username first.
+func (r *UsersRepository) GetByEmailOrUsername(ctx context.Context, identifier string) (*domain.User, error) {
+	query := `
+		SELECT id, email, username, email_verified, name, failed_login_attempts, locked_until,
+		       created_at, updated_at, deleted_at
+		FROM users
+		WHERE (email = $1 OR username = $1) AND deleted_at IS NULL
+	`
+	user := &domain.User{}
+	err := r.db.QueryRowContext(ctx, query, identifier).Scan(
+		&user.ID, &user.Email, &user.Username, &user.EmailVerified, &user.Name,
+		&user.FailedLoginAttempts, &user.LockedUntil,
+		&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, domain.ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
 // ExistsByEmail checks if a user exists by email.
 func (r *UsersRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	query := `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1 AND deleted_at IS NULL)`
 	var exists bool
 	err := r.db.QueryRowContext(ctx, query, email).Scan(&exists)
+	return exists, err
+}
+
+// ExistsByUsername checks if a user exists by username.
+func (r *UsersRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 AND deleted_at IS NULL)`
+	var exists bool
+	err := r.db.QueryRowContext(ctx, query, username).Scan(&exists)
 	return exists, err
 }
