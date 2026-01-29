@@ -30,14 +30,13 @@ type SessionConfig struct {
 
 // SessionService handles session management (the IssueSession function from the design).
 type SessionService struct {
-	config      SessionConfig
-	sessions    *repository.SessionsRepository
-	users       *repository.UsersRepository
-	memberships *repository.MembershipsRepository
+	config   SessionConfig
+	sessions *repository.SessionsRepository
+	users    *repository.UsersRepository
 }
 
 // NewSessionService creates a new session service.
-func NewSessionService(config SessionConfig, sessions *repository.SessionsRepository, users *repository.UsersRepository, memberships *repository.MembershipsRepository) *SessionService {
+func NewSessionService(config SessionConfig, sessions *repository.SessionsRepository, users *repository.UsersRepository) *SessionService {
 	if config.AccessTokenTTL == 0 {
 		config.AccessTokenTTL = DefaultAccessTokenTTL
 	}
@@ -45,10 +44,9 @@ func NewSessionService(config SessionConfig, sessions *repository.SessionsReposi
 		config.RefreshTokenTTL = DefaultRefreshTokenTTL
 	}
 	return &SessionService{
-		config:      config,
-		sessions:    sessions,
-		users:       users,
-		memberships: memberships,
+		config:   config,
+		sessions: sessions,
+		users:    users,
 	}
 }
 
@@ -76,16 +74,14 @@ type IssueSessionOpts struct {
 // AccessTokenClaims represents the claims in an access token.
 type AccessTokenClaims struct {
 	jwt.RegisteredClaims
-	Email        string `json:"email,omitempty"`
-	EmailVerified bool  `json:"email_verified,omitempty"`
-	Name         string `json:"name,omitempty"`
-	TenantID     string `json:"tenant_id"`
-	MembershipID string `json:"membership_id"`
+	Email         string `json:"email,omitempty"`
+	EmailVerified bool   `json:"email_verified,omitempty"`
+	Name          string `json:"name,omitempty"`
 }
 
 // IssueSession creates a new session and returns access/refresh tokens.
 // This is the single entry point for session creation - all auth methods use this.
-func (s *SessionService) IssueSession(ctx context.Context, userID, tenantID, membershipID uuid.UUID, opts IssueSessionOpts) (*domain.TokenPair, error) {
+func (s *SessionService) IssueSession(ctx context.Context, userID uuid.UUID, opts IssueSessionOpts) (*domain.TokenPair, error) {
 	// Get user for token claims
 	user, err := s.users.GetByID(ctx, userID)
 	if err != nil {
@@ -106,7 +102,6 @@ func (s *SessionService) IssueSession(ctx context.Context, userID, tenantID, mem
 	session := &domain.Session{
 		ID:        sessionID,
 		UserID:    userID,
-		TenantID:  tenantID,
 		TokenHash: refreshTokenHash,
 		CreatedAt: now,
 		ExpiresAt: now.Add(s.config.RefreshTokenTTL),
@@ -143,8 +138,6 @@ func (s *SessionService) IssueSession(ctx context.Context, userID, tenantID, mem
 		Email:         user.Email,
 		EmailVerified: user.EmailVerified,
 		Name:          name,
-		TenantID:      tenantID.String(),
-		MembershipID:  membershipID.String(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -180,17 +173,6 @@ func (s *SessionService) RefreshSession(ctx context.Context, refreshToken string
 		return nil, domain.ErrSessionExpired
 	}
 
-	// Get membership for this user and tenant
-	membership, err := s.memberships.GetByUserAndTenant(ctx, session.UserID, session.TenantID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Verify membership is active
-	if !membership.IsActive() {
-		return nil, domain.ErrMembershipNotActive
-	}
-
 	// Update last seen
 	_ = s.sessions.UpdateLastSeen(ctx, session.ID)
 
@@ -218,8 +200,6 @@ func (s *SessionService) RefreshSession(ctx context.Context, refreshToken string
 		Email:         user.Email,
 		EmailVerified: user.EmailVerified,
 		Name:          name,
-		TenantID:      session.TenantID.String(),
-		MembershipID:  membership.ID.String(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -246,11 +226,6 @@ func (s *SessionService) RevokeSession(ctx context.Context, refreshToken string)
 // RevokeAllSessions revokes all sessions for a user.
 func (s *SessionService) RevokeAllSessions(ctx context.Context, userID uuid.UUID) error {
 	return s.sessions.RevokeAllByUserID(ctx, userID)
-}
-
-// RevokeAllSessionsForTenant revokes all sessions for a user in a specific tenant.
-func (s *SessionService) RevokeAllSessionsForTenant(ctx context.Context, userID, tenantID uuid.UUID) error {
-	return s.sessions.RevokeAllByUserIDAndTenant(ctx, userID, tenantID)
 }
 
 // ValidateAccessToken validates an access token and returns the claims.

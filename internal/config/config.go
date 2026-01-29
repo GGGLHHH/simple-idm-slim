@@ -45,9 +45,8 @@ type Config struct {
 	ServeUI    bool
 
 	// Verification
-	EmailVerificationTTL    time.Duration
-	PasswordResetTTL        time.Duration
-	RequireEmailVerification bool
+	EmailVerificationTTL time.Duration
+	PasswordResetTTL     time.Duration
 }
 
 // Load loads configuration from environment variables.
@@ -89,9 +88,8 @@ func Load() (*Config, error) {
 		ServeUI:    getEnvBool("SERVE_UI", true),
 
 		// Verification
-		EmailVerificationTTL:    getEnvDuration("EMAIL_VERIFICATION_TTL", 24*time.Hour),
-		PasswordResetTTL:        getEnvDuration("PASSWORD_RESET_TTL", 1*time.Hour),
-		RequireEmailVerification: getEnvBool("REQUIRE_EMAIL_VERIFICATION", true),
+		EmailVerificationTTL: getEnvDuration("EMAIL_VERIFICATION_TTL", 24*time.Hour),
+		PasswordResetTTL:     getEnvDuration("PASSWORD_RESET_TTL", 1*time.Hour),
 	}
 
 	// Validate required fields
