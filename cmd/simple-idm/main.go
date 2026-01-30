@@ -141,21 +141,22 @@ func main() {
 
 	// Create router
 	router := httpserver.NewRouter(httpserver.RouterConfig{
-		Logger:              logger,
-		PasswordService:     passwordService,
-		GoogleService:       googleService,
-		SessionService:      sessionService,
-		VerificationService: verificationService,
-		EmailService:        emailService,
-		MFAService:          mfaService,
-		UsersRepo:           usersRepo,
-		AppBaseURL:          cfg.AppBaseURL,
-		ServeUI:             cfg.ServeUI,
-		TemplatesDir:        "web/templates",
-		RateLimitConfig:     cfg.RateLimit,
-		SecurityHeaders:     cfg.SecurityHeaders,
-		Validation:          cfg.Validation,
-		SessionSecurity:     cfg.SessionSecurity,
+		Logger:                    logger,
+		PasswordService:           passwordService,
+		GoogleService:             googleService,
+		SessionService:            sessionService,
+		VerificationService:       verificationService,
+		EmailService:              emailService,
+		MFAService:                mfaService,
+		UsersRepo:                 usersRepo,
+		AppBaseURL:                cfg.AppBaseURL,
+		ServeUI:                   cfg.ServeUI,
+		TemplatesDir:              "web/templates",
+		RateLimitConfig:           cfg.RateLimit,
+		SecurityHeaders:           cfg.SecurityHeaders,
+		Validation:                cfg.Validation,
+		SessionSecurity:           cfg.SessionSecurity,
+		EmailVerificationRequired: cfg.EmailVerificationRequired,
 	})
 
 	// Create HTTP server

@@ -22,21 +22,22 @@ import (
 
 // RouterConfig holds configuration for the router.
 type RouterConfig struct {
-	Logger              *slog.Logger
-	PasswordService     *auth.PasswordService
-	GoogleService       *auth.GoogleService
-	SessionService      *auth.SessionService
-	VerificationService *auth.VerificationService
-	EmailService        *notification.EmailService
-	MFAService          *auth.MFAService
-	UsersRepo           *repository.UsersRepository
-	AppBaseURL          string
-	ServeUI             bool
-	TemplatesDir        string
-	RateLimitConfig     config.RateLimitConfig
-	SecurityHeaders     config.SecurityHeadersConfig
-	Validation          config.ValidationConfig
-	SessionSecurity     config.SessionSecurityConfig
+	Logger                    *slog.Logger
+	PasswordService           *auth.PasswordService
+	GoogleService             *auth.GoogleService
+	SessionService            *auth.SessionService
+	VerificationService       *auth.VerificationService
+	EmailService              *notification.EmailService
+	MFAService                *auth.MFAService
+	UsersRepo                 *repository.UsersRepository
+	AppBaseURL                string
+	ServeUI                   bool
+	TemplatesDir              string
+	RateLimitConfig           config.RateLimitConfig
+	SecurityHeaders           config.SecurityHeadersConfig
+	Validation                config.ValidationConfig
+	SessionSecurity           config.SessionSecurityConfig
+	EmailVerificationRequired bool
 }
 
 // NewRouter creates a new HTTP router with all routes registered.
@@ -66,6 +67,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		cfg.EmailService,
 		cfg.MFAService,
 		cfg.AppBaseURL,
+		cfg.EmailVerificationRequired,
 	)
 	r.Group(func(r chi.Router) {
 		r.Use(rateLimiters["auth"])

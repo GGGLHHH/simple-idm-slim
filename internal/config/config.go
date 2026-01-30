@@ -45,8 +45,9 @@ type Config struct {
 	ServeUI    bool
 
 	// Verification
-	EmailVerificationTTL time.Duration
-	PasswordResetTTL     time.Duration
+	EmailVerificationTTL     time.Duration
+	PasswordResetTTL         time.Duration
+	EmailVerificationRequired bool
 
 	// Rate Limiting
 	RateLimit RateLimitConfig
@@ -162,8 +163,9 @@ func Load() (*Config, error) {
 		ServeUI:    getEnvBool("SERVE_UI", true),
 
 		// Verification
-		EmailVerificationTTL: getEnvDuration("EMAIL_VERIFICATION_TTL", 24*time.Hour),
-		PasswordResetTTL:     getEnvDuration("PASSWORD_RESET_TTL", 1*time.Hour),
+		EmailVerificationTTL:      getEnvDuration("EMAIL_VERIFICATION_TTL", 24*time.Hour),
+		PasswordResetTTL:          getEnvDuration("PASSWORD_RESET_TTL", 1*time.Hour),
+		EmailVerificationRequired: getEnvBool("EMAIL_VERIFICATION_REQUIRED", true),
 
 		// Rate Limiting (defaults match current hardcoded limits)
 		RateLimit: RateLimitConfig{

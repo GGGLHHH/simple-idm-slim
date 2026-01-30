@@ -240,8 +240,8 @@ func (i *IDM) Router() chi.Router {
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.Logger)
 
-	// Password auth routes
-	passwordHandler := password.NewHandler(i.config.Logger, i.passwordService, i.sessionService, nil, nil, "")
+	// Password auth routes (email verification disabled in library mode - no email service)
+	passwordHandler := password.NewHandler(i.config.Logger, i.passwordService, i.sessionService, nil, nil, nil, "", false)
 	r.Post("/register", passwordHandler.Register)
 	r.Post("/login", passwordHandler.Login)
 
@@ -300,8 +300,8 @@ func (i *IDM) AuthRouter() chi.Router {
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.Logger)
 
-	// Password auth routes
-	passwordHandler := password.NewHandler(i.config.Logger, i.passwordService, i.sessionService, nil, nil, "")
+	// Password auth routes (email verification disabled in library mode - no email service)
+	passwordHandler := password.NewHandler(i.config.Logger, i.passwordService, i.sessionService, nil, nil, nil, "", false)
 	r.Post("/register", passwordHandler.Register)
 	r.Post("/login", passwordHandler.Login)
 

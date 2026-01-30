@@ -18,14 +18,15 @@ type tokenPair = domain.TokenPair
 
 // Handler handles password authentication endpoints.
 type Handler struct {
-	logger              *slog.Logger
-	passwordService     *auth.PasswordService
-	sessionService      *auth.SessionService
-	verificationService *auth.VerificationService
-	emailService        *notification.EmailService
-	mfaService          *auth.MFAService
-	cookieConfig        httputil.CookieConfig
-	appBaseURL          string
+	logger                    *slog.Logger
+	passwordService           *auth.PasswordService
+	sessionService            *auth.SessionService
+	verificationService       *auth.VerificationService
+	emailService              *notification.EmailService
+	mfaService                *auth.MFAService
+	cookieConfig              httputil.CookieConfig
+	appBaseURL                string
+	emailVerificationRequired bool
 }
 
 // NewHandler creates a new password handler.
@@ -37,16 +38,18 @@ func NewHandler(
 	emailService *notification.EmailService,
 	mfaService *auth.MFAService,
 	appBaseURL string,
+	emailVerificationRequired bool,
 ) *Handler {
 	return &Handler{
-		logger:              logger,
-		passwordService:     passwordService,
-		sessionService:      sessionService,
-		verificationService: verificationService,
-		emailService:        emailService,
-		mfaService:          mfaService,
-		cookieConfig:        httputil.DefaultCookieConfig(),
-		appBaseURL:          appBaseURL,
+		logger:                    logger,
+		passwordService:           passwordService,
+		sessionService:            sessionService,
+		verificationService:       verificationService,
+		emailService:              emailService,
+		mfaService:                mfaService,
+		cookieConfig:              httputil.DefaultCookieConfig(),
+		appBaseURL:                appBaseURL,
+		emailVerificationRequired: emailVerificationRequired,
 	}
 }
 
@@ -183,14 +186,14 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if email is verified
+	// Check if email is verified (if required)
 	user, err := h.passwordService.GetUserByID(r.Context(), userID)
 	if err != nil {
 		httputil.Error(w, http.StatusInternalServerError, "failed to get user")
 		return
 	}
 
-	if !user.EmailVerified {
+	if h.emailVerificationRequired && !user.EmailVerified {
 		httputil.Error(w, http.StatusForbidden, "email verification required. Please check your email for verification link")
 		return
 	}
