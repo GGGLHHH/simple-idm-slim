@@ -1,0 +1,24 @@
+# Migration-only image with goose and migration files
+FROM alpine:3.19
+
+# Install postgresql-client for pg_isready and goose
+RUN apk add --no-cache postgresql-client curl
+
+# Install goose
+RUN curl -fsSL https://github.com/pressly/goose/releases/download/v3.25.0/goose_linux_x86_64 -o /usr/local/bin/goose \
+    && chmod +x /usr/local/bin/goose
+
+# Create migrations directory
+WORKDIR /app
+RUN mkdir -p /app/migrations/idm
+
+# Copy migration files
+COPY migrations/*.sql /app/migrations/idm/
+
+# Run as non-root user
+RUN adduser -D -u 1000 appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+# Default command (overridden by job)
+CMD ["goose", "--help"]
