@@ -144,7 +144,11 @@ func generateRandomString(length int) string {
 func (h *Handler) Start(w http.ResponseWriter, r *http.Request) {
 	clientIP := r.RemoteAddr
 
+	// Accept both redirect_uri and redirect_url for compatibility
 	redirectURI := r.URL.Query().Get("redirect_uri")
+	if redirectURI == "" {
+		redirectURI = r.URL.Query().Get("redirect_url")
+	}
 	if redirectURI == "" {
 		redirectURI = "/"
 	}
