@@ -403,10 +403,17 @@ func (h *Handler) Callback(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 
-	// Redirect to the original redirect URI
+	// Redirect to the original redirect URI with auth=success param
 	redirectURI := oauthState.RedirectURI
 	if redirectURI == "" {
 		redirectURI = "/"
+	}
+
+	// Append auth=success query param for frontend to detect successful login
+	if strings.Contains(redirectURI, "?") {
+		redirectURI += "&auth=success"
+	} else {
+		redirectURI += "?auth=success"
 	}
 
 	slog.Debug("Google OAuth: redirecting to app",
