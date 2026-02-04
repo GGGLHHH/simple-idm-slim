@@ -587,12 +587,16 @@ func (h *Handler) HandleToken(w http.ResponseWriter, r *http.Request) {
 		"email", claims.Email,
 	)
 
-	// Return tokens as JSON for native apps
+	// Return tokens and user info as JSON for native apps
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"access_token":  tokens.AccessToken,
-		"refresh_token": tokens.RefreshToken,
-		"token_type":    tokens.TokenType,
-		"expires_in":    tokens.ExpiresIn,
+		"authenticated":  true,
+		"user_id":        userID,
+		"email":          claims.Email,
+		"display_name":   claims.Name,
+		"access_token":   tokens.AccessToken,
+		"refresh_token":  tokens.RefreshToken,
+		"token_type":     tokens.TokenType,
+		"expires_in":     tokens.ExpiresIn,
 	})
 }

@@ -283,7 +283,6 @@ func (i *IDM) Router() chi.Router {
 		r.Get("/google/callback", googleHandler.Callback)
 		// Token endpoint for native mobile apps
 		r.Post("/google/token", googleHandler.HandleToken)
-		r.Post("/external/google/token", googleHandler.HandleToken)
 	}
 
 	return r
@@ -345,7 +344,6 @@ func (i *IDM) AuthRouter() chi.Router {
 		r.Get("/google/callback", googleHandler.Callback)
 		// Token endpoint for native mobile apps
 		r.Post("/google/token", googleHandler.HandleToken)
-		r.Post("/external/google/token", googleHandler.HandleToken)
 	}
 
 	return r
