@@ -499,3 +499,100 @@ func (h *Handler) CallbackHTML(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(`<html><body><script>window.opener.postMessage(` + string(tokenJSON) + `,"*");window.close();</script></body></html>`))
 }
+
+// TokenRequest represents a request to exchange a Google ID token for session tokens.
+// Used by native mobile apps that perform Google Sign-In using native SDKs.
+type TokenRequest struct {
+	IDToken string `json:"id_token"`
+}
+
+// HandleToken handles token exchange for native mobile apps.
+// POST /auth/google/token or /auth/external/google/token
+// Request body: {"id_token": "..."}
+// Response: {"access_token": "...", "refresh_token": "...", "token_type": "Bearer", "expires_in": ...}
+func (h *Handler) HandleToken(w http.ResponseWriter, r *http.Request) {
+	clientIP := r.RemoteAddr
+
+	// Parse request body
+	var req TokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		slog.Error("Google token: failed to parse request",
+			"client_ip", clientIP,
+			"error", err,
+		)
+		httputil.Error(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.IDToken == "" {
+		slog.Warn("Google token: missing id_token",
+			"client_ip", clientIP,
+		)
+		httputil.Error(w, http.StatusBadRequest, "id_token is required")
+		return
+	}
+
+	slog.Debug("Google token: validating ID token",
+		"client_ip", clientIP,
+		"token_length", len(req.IDToken),
+	)
+
+	// Validate ID token (no nonce for native apps)
+	claims, err := h.googleService.ValidateIDToken(r.Context(), req.IDToken, "")
+	if err != nil {
+		slog.Error("Google token: invalid ID token",
+			"client_ip", clientIP,
+			"error", err,
+		)
+		httputil.Error(w, http.StatusUnauthorized, "invalid ID token")
+		return
+	}
+
+	slog.Debug("Google token: ID token validated",
+		"client_ip", clientIP,
+		"email", claims.Email,
+	)
+
+	// Authenticate (find or create user)
+	userID, err := h.googleService.Authenticate(r.Context(), claims)
+	if err != nil {
+		slog.Error("Google token: authentication failed",
+			"client_ip", clientIP,
+			"email", claims.Email,
+			"error", err,
+		)
+		httputil.Error(w, http.StatusInternalServerError, "authentication failed")
+		return
+	}
+
+	// Issue session
+	opts := auth.IssueSessionOpts{
+		IP:        r.RemoteAddr,
+		UserAgent: r.UserAgent(),
+	}
+	tokens, err := h.sessionService.IssueSession(r.Context(), userID, opts)
+	if err != nil {
+		slog.Error("Google token: failed to issue session",
+			"client_ip", clientIP,
+			"user_id", userID,
+			"error", err,
+		)
+		httputil.Error(w, http.StatusInternalServerError, "failed to issue session")
+		return
+	}
+
+	slog.Info("Google token: login successful",
+		"client_ip", clientIP,
+		"user_id", userID,
+		"email", claims.Email,
+	)
+
+	// Return tokens as JSON for native apps
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"access_token":  tokens.AccessToken,
+		"refresh_token": tokens.RefreshToken,
+		"token_type":    tokens.TokenType,
+		"expires_in":    tokens.ExpiresIn,
+	})
+}
