@@ -89,12 +89,12 @@ func (r *VerificationTokensRepository) RevokeActiveTokens(ctx context.Context, u
 	return r.RevokeActiveTokensTx(ctx, r.db, userID, kind)
 }
 
-// RevokeActiveTokensTx revokes all active tokens within a transaction.
+// RevokeActiveTokensTx revokes all non-consumed tokens within a transaction.
 func (r *VerificationTokensRepository) RevokeActiveTokensTx(ctx context.Context, q Querier, userID uuid.UUID, kind domain.VerificationTokenKind) error {
 	query := `
 		UPDATE verification_tokens
 		SET consumed_at = NOW()
-		WHERE user_id = $1 AND kind = $2 AND consumed_at IS NULL AND expires_at > NOW()
+		WHERE user_id = $1 AND kind = $2 AND consumed_at IS NULL
 	`
 	_, err := q.ExecContext(ctx, query, userID, kind)
 	return err
