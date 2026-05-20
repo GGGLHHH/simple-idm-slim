@@ -1,8 +1,12 @@
 package idm
 
 import (
+	"context"
+	"database/sql"
 	"testing"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 func TestValidateConfig(t *testing.T) {
@@ -102,6 +106,36 @@ func TestGoogleConfig(t *testing.T) {
 	}
 }
 
+func TestValidateSchemaUsesCurrentSearchPath(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+	schema := "idm_schema_test"
+
+	execTestSQL(t, db, `DROP SCHEMA IF EXISTS `+pq.QuoteIdentifier(schema)+` CASCADE`)
+	t.Cleanup(func() {
+		execTestSQL(t, db, `DROP SCHEMA IF EXISTS `+pq.QuoteIdentifier(schema)+` CASCADE`)
+	})
+
+	execTestSQL(t, db, `CREATE SCHEMA `+pq.QuoteIdentifier(schema))
+	execTestSQL(t, db, `CREATE TABLE `+pq.QuoteIdentifier(schema)+`.users (id uuid PRIMARY KEY)`)
+	execTestSQL(t, db, `CREATE TABLE `+pq.QuoteIdentifier(schema)+`.user_password (user_id uuid PRIMARY KEY)`)
+	execTestSQL(t, db, `CREATE TABLE `+pq.QuoteIdentifier(schema)+`.user_identities (id uuid PRIMARY KEY)`)
+	execTestSQL(t, db, `CREATE TABLE `+pq.QuoteIdentifier(schema)+`.sessions (id uuid PRIMARY KEY)`)
+	execTestSQL(t, db, `SET search_path TO `+pq.QuoteIdentifier(schema)+`, public`)
+
+	var currentSchema string
+	if err := db.QueryRowContext(ctx, `SELECT current_schema()`).Scan(&currentSchema); err != nil {
+		t.Fatalf("current_schema: %v", err)
+	}
+	if currentSchema != schema {
+		t.Fatalf("expected current schema %q, got %q", schema, currentSchema)
+	}
+
+	if err := validateSchema(db); err != nil {
+		t.Fatalf("validateSchema() error = %v", err)
+	}
+}
+
 func TestUser(t *testing.T) {
 	name := "Test User"
 	user := User{
@@ -122,5 +156,32 @@ func TestUser(t *testing.T) {
 	}
 	if *user.Name != "Test User" {
 		t.Errorf("Name = %q, want %q", *user.Name, "Test User")
+	}
+}
+
+func openTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+
+	dsn := "postgres://xchangeai:pwd@localhost:5432/xchangeai?sslmode=disable"
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = db.Close()
+	})
+
+	if err := db.Ping(); err != nil {
+		t.Skipf("skipping postgres integration test: %v", err)
+	}
+
+	return db
+}
+
+func execTestSQL(t *testing.T, db *sql.DB, query string) {
+	t.Helper()
+
+	if _, err := db.Exec(query); err != nil {
+		t.Fatalf("exec %q: %v", query, err)
 	}
 }

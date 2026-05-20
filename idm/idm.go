@@ -493,7 +493,7 @@ func validateSchema(db *sql.DB) error {
 	query := `
 		SELECT table_name
 		FROM information_schema.tables
-		WHERE table_schema = 'public' AND table_name = $1
+		WHERE table_schema = ANY(current_schemas(false)) AND table_name = $1
 	`
 
 	for _, table := range requiredTables {
