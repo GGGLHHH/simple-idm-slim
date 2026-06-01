@@ -55,6 +55,7 @@ import (
 	"github.com/tendant/simple-idm-slim/internal/http/middleware"
 	"github.com/tendant/simple-idm-slim/internal/httputil"
 	"github.com/tendant/simple-idm-slim/pkg/auth"
+	"github.com/tendant/simple-idm-slim/pkg/domain"
 	"github.com/tendant/simple-idm-slim/pkg/repository"
 )
 
@@ -135,6 +136,7 @@ type IDM struct {
 	credsRepo       *repository.CredentialsRepository
 	identitiesRepo  *repository.IdentitiesRepository
 	sessionsRepo    *repository.SessionsRepository
+	rolesRepo       *repository.RolesRepository
 	passwordService *auth.PasswordService
 	sessionService  *auth.SessionService
 	googleService   *auth.GoogleService
@@ -160,6 +162,7 @@ func New(cfg Config) (*IDM, error) {
 	credsRepo := repository.NewCredentialsRepository(cfg.DB)
 	identitiesRepo := repository.NewIdentitiesRepository(cfg.DB)
 	sessionsRepo := repository.NewSessionsRepository(cfg.DB)
+	rolesRepo := repository.NewRolesRepository(cfg.DB)
 
 	// Initialize services
 	var passwordPolicy *auth.PasswordPolicy
@@ -191,7 +194,7 @@ func New(cfg Config) (*IDM, error) {
 		detectReuse = cfg.SessionSecurity.DetectReuse
 	}
 
-	sessionService := auth.NewSessionService(auth.SessionConfig{
+	sessionService := auth.NewSessionServiceWithRoles(auth.SessionConfig{
 		AccessTokenTTL:     cfg.AccessTokenTTL,
 		RefreshTokenTTL:    cfg.RefreshTokenTTL,
 		JWTSecret:          []byte(cfg.JWTSecret),
@@ -199,7 +202,7 @@ func New(cfg Config) (*IDM, error) {
 		AccessTokenIssuer:  cfg.AccessTokenIssuer,
 		FingerprintEnabled: fingerprintEnabled,
 		DetectReuseEnabled: detectReuse,
-	}, sessionsRepo, usersRepo)
+	}, sessionsRepo, usersRepo, rolesRepo)
 
 	var googleService *auth.GoogleService
 	if cfg.Google != nil {
@@ -223,6 +226,7 @@ func New(cfg Config) (*IDM, error) {
 		credsRepo:       credsRepo,
 		identitiesRepo:  identitiesRepo,
 		sessionsRepo:    sessionsRepo,
+		rolesRepo:       rolesRepo,
 		passwordService: passwordService,
 		sessionService:  sessionService,
 		googleService:   googleService,
@@ -358,6 +362,55 @@ func (i *IDM) SessionService() *auth.SessionService {
 	return i.sessionService
 }
 
+// EnsureRole returns an existing role by name or creates it.
+func (i *IDM) EnsureRole(ctx context.Context, name string) (*domain.Role, error) {
+	return i.rolesRepo.Ensure(ctx, name)
+}
+
+// ListRoles returns all roles ordered by name.
+func (i *IDM) ListRoles(ctx context.Context) ([]*domain.Role, error) {
+	return i.rolesRepo.List(ctx)
+}
+
+// AssignRole assigns a role by name to a user.
+func (i *IDM) AssignRole(ctx context.Context, userID uuid.UUID, roleName string) error {
+	role, err := i.rolesRepo.Ensure(ctx, roleName)
+	if err != nil {
+		return err
+	}
+	return i.rolesRepo.AssignToUser(ctx, userID, role.ID)
+}
+
+// RemoveRole removes a role by name from a user.
+func (i *IDM) RemoveRole(ctx context.Context, userID uuid.UUID, roleName string) error {
+	role, err := i.rolesRepo.GetByName(ctx, roleName)
+	if err != nil {
+		if errors.Is(err, domain.ErrRoleNotFound) {
+			return nil
+		}
+		return err
+	}
+	return i.rolesRepo.RemoveFromUser(ctx, userID, role.ID)
+}
+
+// SetUserRoles replaces all roles assigned to a user with the given role names.
+func (i *IDM) SetUserRoles(ctx context.Context, userID uuid.UUID, roleNames []string) error {
+	roleIDs := make([]uuid.UUID, 0, len(roleNames))
+	for _, roleName := range roleNames {
+		role, err := i.rolesRepo.Ensure(ctx, roleName)
+		if err != nil {
+			return err
+		}
+		roleIDs = append(roleIDs, role.ID)
+	}
+	return i.rolesRepo.SetUserRoles(ctx, userID, roleIDs)
+}
+
+// GetUserRoles returns role names assigned to a user.
+func (i *IDM) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	return i.rolesRepo.GetUserRoleNames(ctx, userID)
+}
+
 // AuthMiddleware returns middleware that validates JWT tokens.
 // Use this to protect your own routes:
 //
@@ -488,7 +541,7 @@ func applyDefaults(cfg *Config) {
 
 // validateSchema checks that required database tables exist.
 func validateSchema(db *sql.DB) error {
-	requiredTables := []string{"users", "user_password", "user_identities", "sessions"}
+	requiredTables := []string{"users", "user_password", "user_identities", "sessions", "roles", "user_roles"}
 
 	query := `
 		SELECT table_name

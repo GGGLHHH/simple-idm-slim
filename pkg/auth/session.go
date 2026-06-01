@@ -38,10 +38,16 @@ type SessionService struct {
 	config   SessionConfig
 	sessions *repository.SessionsRepository
 	users    *repository.UsersRepository
+	roles    *repository.RolesRepository
 }
 
 // NewSessionService creates a new session service.
 func NewSessionService(config SessionConfig, sessions *repository.SessionsRepository, users *repository.UsersRepository) *SessionService {
+	return NewSessionServiceWithRoles(config, sessions, users, nil)
+}
+
+// NewSessionServiceWithRoles creates a new session service with role claim support.
+func NewSessionServiceWithRoles(config SessionConfig, sessions *repository.SessionsRepository, users *repository.UsersRepository, roles *repository.RolesRepository) *SessionService {
 	if config.AccessTokenTTL == 0 {
 		config.AccessTokenTTL = DefaultAccessTokenTTL
 	}
@@ -52,6 +58,7 @@ func NewSessionService(config SessionConfig, sessions *repository.SessionsReposi
 		config:   config,
 		sessions: sessions,
 		users:    users,
+		roles:    roles,
 	}
 }
 
@@ -80,6 +87,7 @@ type IssueSessionOpts struct {
 // AccessTokenIssueInput provides context for custom access token issuance.
 type AccessTokenIssueInput struct {
 	User        *domain.User
+	Roles       []string
 	SessionID   uuid.UUID
 	IssuedAt    time.Time
 	ExpiresAt   time.Time
@@ -95,10 +103,11 @@ type AccessTokenIssuer interface {
 // AccessTokenClaims represents the claims in an access token.
 type AccessTokenClaims struct {
 	jwt.RegisteredClaims
-	Email         string `json:"email,omitempty"`
-	EmailVerified bool   `json:"email_verified,omitempty"`
-	Name          string `json:"name,omitempty"`
-	MFAVerified   bool   `json:"mfa_verified,omitempty"`
+	Email         string   `json:"email,omitempty"`
+	EmailVerified bool     `json:"email_verified,omitempty"`
+	Name          string   `json:"name,omitempty"`
+	Roles         []string `json:"roles,omitempty"`
+	MFAVerified   bool     `json:"mfa_verified,omitempty"`
 }
 
 // IssueSession creates a new session and returns access/refresh tokens.
@@ -188,7 +197,16 @@ func (s *SessionService) IssueSession(ctx context.Context, userID uuid.UUID, opt
 
 	// Generate access token (JWT)
 	accessTokenExpiry := now.Add(s.config.AccessTokenTTL)
-	accessToken, err := s.issueAccessToken(ctx, user, sessionID, now, accessTokenExpiry, opts)
+	roles, err := s.getUserRoleNames(ctx, user.ID)
+	if err != nil {
+		slog.Error("SessionService.IssueSession: failed to get user roles",
+			"session_id", sessionID,
+			"user_id", userID,
+			"error", err,
+		)
+		return nil, err
+	}
+	accessToken, err := s.issueAccessToken(ctx, user, roles, sessionID, now, accessTokenExpiry, opts)
 	if err != nil {
 		slog.Error("SessionService.IssueSession: failed to sign access token",
 			"session_id", sessionID,
@@ -261,7 +279,11 @@ func (s *SessionService) RefreshSession(ctx context.Context, refreshToken string
 	// Generate new access token
 	now := time.Now()
 	accessTokenExpiry := now.Add(s.config.AccessTokenTTL)
-	accessToken, err := s.issueAccessToken(ctx, user, session.ID, now, accessTokenExpiry, opts)
+	roles, err := s.getUserRoleNames(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	accessToken, err := s.issueAccessToken(ctx, user, roles, session.ID, now, accessTokenExpiry, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -341,6 +363,7 @@ func (s *SessionService) GetUserIDFromToken(tokenString string) (uuid.UUID, erro
 func (s *SessionService) issueAccessToken(
 	ctx context.Context,
 	user *domain.User,
+	roles []string,
 	sessionID uuid.UUID,
 	issuedAt time.Time,
 	expiresAt time.Time,
@@ -349,6 +372,7 @@ func (s *SessionService) issueAccessToken(
 	if s.config.AccessTokenIssuer != nil {
 		return s.config.AccessTokenIssuer.IssueAccessToken(ctx, AccessTokenIssueInput{
 			User:        user,
+			Roles:       roles,
 			SessionID:   sessionID,
 			IssuedAt:    issuedAt,
 			ExpiresAt:   expiresAt,
@@ -372,9 +396,17 @@ func (s *SessionService) issueAccessToken(
 		Email:         user.Email,
 		EmailVerified: user.EmailVerified,
 		Name:          name,
+		Roles:         roles,
 		MFAVerified:   !user.MFAEnabled || opts.MFAVerified,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(s.config.JWTSecret)
+}
+
+func (s *SessionService) getUserRoleNames(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	if s.roles == nil {
+		return nil, nil
+	}
+	return s.roles.GetUserRoleNames(ctx, userID)
 }

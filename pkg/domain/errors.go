@@ -20,12 +20,14 @@ var (
 	ErrVerificationTokenExpired  = errors.New("verification token expired")
 	ErrVerificationTokenConsumed = errors.New("verification token already used")
 	ErrVerificationTokenInvalid  = errors.New("invalid verification token")
+	ErrRoleNotFound              = errors.New("role not found")
 )
 
 // Validation errors
 var (
 	ErrInvalidEmail     = errors.New("invalid email address")
 	ErrInvalidUsername  = errors.New("invalid username format") // Deprecated: username format policy is host-defined.
+	ErrInvalidRoleName  = errors.New("invalid role name")
 	ErrWeakPassword     = errors.New("password does not meet requirements")
 	ErrEmailNotVerified = errors.New("email not verified")
 )

@@ -27,9 +27,13 @@ func (r *SessionsRepository) Create(ctx context.Context, session *domain.Session
 		INSERT INTO sessions (id, user_id, token_hash, created_at, expires_at, metadata)
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`
+	var metadata interface{}
+	if len(session.Metadata) > 0 {
+		metadata = session.Metadata
+	}
 	_, err := r.db.ExecContext(ctx, query,
 		session.ID, session.UserID, session.TokenHash,
-		session.CreatedAt, session.ExpiresAt, session.Metadata,
+		session.CreatedAt, session.ExpiresAt, metadata,
 	)
 	return err
 }
@@ -42,10 +46,11 @@ func (r *SessionsRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain
 		WHERE id = $1
 	`
 	session := &domain.Session{}
+	var metadata []byte
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&session.ID, &session.UserID, &session.TokenHash,
 		&session.CreatedAt, &session.ExpiresAt, &session.RevokedAt,
-		&session.LastSeenAt, &session.Metadata,
+		&session.LastSeenAt, &metadata,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, domain.ErrSessionNotFound
@@ -53,6 +58,7 @@ func (r *SessionsRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain
 	if err != nil {
 		return nil, err
 	}
+	session.Metadata = metadata
 	return session, nil
 }
 
@@ -64,10 +70,11 @@ func (r *SessionsRepository) GetByTokenHash(ctx context.Context, tokenHash strin
 		WHERE token_hash = $1 AND revoked_at IS NULL
 	`
 	session := &domain.Session{}
+	var metadata []byte
 	err := r.db.QueryRowContext(ctx, query, tokenHash).Scan(
 		&session.ID, &session.UserID, &session.TokenHash,
 		&session.CreatedAt, &session.ExpiresAt, &session.RevokedAt,
-		&session.LastSeenAt, &session.Metadata,
+		&session.LastSeenAt, &metadata,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, domain.ErrSessionNotFound
@@ -75,6 +82,7 @@ func (r *SessionsRepository) GetByTokenHash(ctx context.Context, tokenHash strin
 	if err != nil {
 		return nil, err
 	}
+	session.Metadata = metadata
 	return session, nil
 }
 
@@ -95,14 +103,16 @@ func (r *SessionsRepository) GetByUserID(ctx context.Context, userID uuid.UUID) 
 	var sessions []*domain.Session
 	for rows.Next() {
 		session := &domain.Session{}
+		var metadata []byte
 		err := rows.Scan(
 			&session.ID, &session.UserID, &session.TokenHash,
 			&session.CreatedAt, &session.ExpiresAt, &session.RevokedAt,
-			&session.LastSeenAt, &session.Metadata,
+			&session.LastSeenAt, &metadata,
 		)
 		if err != nil {
 			return nil, err
 		}
+		session.Metadata = metadata
 		sessions = append(sessions, session)
 	}
 	return sessions, rows.Err()
