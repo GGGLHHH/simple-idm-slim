@@ -7,15 +7,13 @@ import (
 )
 
 func TestLoad_Defaults(t *testing.T) {
-	// Set required JWT_SECRET
-	os.Setenv("JWT_SECRET", "test-secret-key")
-	defer os.Unsetenv("JWT_SECRET")
-
 	// Clear any other env vars that might interfere
-	envVars := []string{"SERVER_ADDR", "SERVER_PORT", "DB_HOST", "DB_PORT", "DB_USER", "DB_PASSWORD", "DB_NAME", "DB_SSLMODE"}
+	envVars := []string{"SERVER_ADDR", "SERVER_PORT", "DB_HOST", "DB_PORT", "DB_USER", "DB_PASSWORD", "DB_NAME", "DB_SSLMODE", "MFA_ENABLED"}
 	for _, v := range envVars {
 		os.Unsetenv(v)
 	}
+	t.Setenv("JWT_SECRET", "test-secret-key")
+	t.Setenv("MFA_ENCRYPTION_KEY", "test-mfa-encryption-key")
 
 	cfg, err := Load()
 	if err != nil {
@@ -56,16 +54,11 @@ func TestLoad_RequiredJWTSecret(t *testing.T) {
 }
 
 func TestLoad_CustomValues(t *testing.T) {
-	os.Setenv("JWT_SECRET", "custom-secret")
-	os.Setenv("SERVER_PORT", "9090")
-	os.Setenv("DB_HOST", "db.example.com")
-	os.Setenv("ACCESS_TOKEN_TTL", "30m")
-	defer func() {
-		os.Unsetenv("JWT_SECRET")
-		os.Unsetenv("SERVER_PORT")
-		os.Unsetenv("DB_HOST")
-		os.Unsetenv("ACCESS_TOKEN_TTL")
-	}()
+	t.Setenv("JWT_SECRET", "custom-secret")
+	t.Setenv("MFA_ENCRYPTION_KEY", "custom-mfa-encryption-key")
+	t.Setenv("SERVER_PORT", "9090")
+	t.Setenv("DB_HOST", "db.example.com")
+	t.Setenv("ACCESS_TOKEN_TTL", "30m")
 
 	cfg, err := Load()
 	if err != nil {
