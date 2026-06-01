@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/tendant/simple-idm-slim/pkg/auth"
-	"github.com/tendant/simple-idm-slim/pkg/domain"
 	"github.com/tendant/simple-idm-slim/internal/httputil"
 	"github.com/tendant/simple-idm-slim/internal/notification"
+	"github.com/tendant/simple-idm-slim/pkg/auth"
+	"github.com/tendant/simple-idm-slim/pkg/domain"
 )
 
 // Alias for cleaner code
@@ -107,10 +107,6 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		}
 		if errors.Is(err, domain.ErrUsernameAlreadyExists) {
 			httputil.Error(w, http.StatusConflict, "username already taken")
-			return
-		}
-		if errors.Is(err, domain.ErrInvalidUsername) {
-			httputil.Error(w, http.StatusBadRequest, "invalid username format: must be 3-30 characters, alphanumeric/underscore/hyphen, start with alphanumeric")
 			return
 		}
 		httputil.Error(w, http.StatusInternalServerError, "registration failed")

@@ -1,28 +1,12 @@
 package auth
 
 import (
-	"regexp"
 	"strings"
-
-	"github.com/tendant/simple-idm-slim/pkg/domain"
 )
 
-var (
-	// Username pattern: 3-30 chars, alphanumeric/underscore/hyphen, must start with alphanumeric
-	usernamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{2,29}$`)
-)
-
-// ValidateUsername validates username format.
-// Returns domain.ErrInvalidUsername if invalid.
+// ValidateUsername is retained for backward compatibility.
+// Username format policy is left to host applications.
 func ValidateUsername(username string) error {
-	if username == "" {
-		return domain.ErrInvalidUsername
-	}
-
-	if !usernamePattern.MatchString(username) {
-		return domain.ErrInvalidUsername
-	}
-
 	return nil
 }
 
