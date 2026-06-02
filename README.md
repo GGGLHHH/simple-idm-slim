@@ -5,7 +5,7 @@ A minimal, embeddable identity management library for Go applications.
 ## Features
 
 - Email + password authentication with Argon2id hashing
-- Optional username support (login with email or username)
+- Optional username support (login with email or username, with host-defined format policy)
 - Google OAuth authentication
 - JWT access tokens + opaque refresh tokens
 - Session management with token revocation

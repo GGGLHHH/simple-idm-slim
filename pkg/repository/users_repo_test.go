@@ -26,32 +26,38 @@ func TestUsersRepository_ExistsByUsername(t *testing.T) {
 	}
 }
 
-func TestCreateUser_ValidatesUsername(t *testing.T) {
-	// Test that repository accepts valid username formats
+func TestCreateUser_AcceptsUsernameValues(t *testing.T) {
 	tests := []struct {
 		name     string
 		username *string
-		valid    bool
 	}{
 		{
 			name:     "nil username",
 			username: nil,
-			valid:    true,
 		},
 		{
 			name:     "valid username",
 			username: stringPtr("validuser"),
-			valid:    true,
 		},
 		{
 			name:     "username with underscore",
 			username: stringPtr("user_name"),
-			valid:    true,
 		},
 		{
 			name:     "username with hyphen",
 			username: stringPtr("user-name"),
-			valid:    true,
+		},
+		{
+			name:     "username with punctuation",
+			username: stringPtr("user.name@example"),
+		},
+		{
+			name:     "username with unicode",
+			username: stringPtr("用户😀"),
+		},
+		{
+			name:     "empty username string",
+			username: stringPtr(""),
 		},
 	}
 
@@ -66,7 +72,6 @@ func TestCreateUser_ValidatesUsername(t *testing.T) {
 				UpdatedAt:     time.Now(),
 			}
 
-			// Verify user struct can be created with various username values
 			if user.Username != tt.username {
 				t.Errorf("Username mismatch: got %v, want %v", user.Username, tt.username)
 			}

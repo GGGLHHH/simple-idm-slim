@@ -2,71 +2,63 @@ package auth
 
 import (
 	"testing"
-
-	"github.com/tendant/simple-idm-slim/pkg/domain"
 )
 
 // Note: Hash/Verify tests are in crypto_test.go
 // This file focuses on password service-specific logic
 
-func TestPasswordService_ValidateUsernameFormat(t *testing.T) {
-	// Test username validation logic that would be used in Register
+func TestPasswordService_ValidateUsernameAllowsHostDefinedValues(t *testing.T) {
 	tests := []struct {
 		name     string
 		username string
-		wantErr  bool
 	}{
 		{
 			name:     "valid username",
 			username: "validuser",
-			wantErr:  false,
 		},
 		{
 			name:     "valid with numbers",
 			username: "user123",
-			wantErr:  false,
 		},
 		{
 			name:     "valid with underscore",
 			username: "user_name",
-			wantErr:  false,
 		},
 		{
 			name:     "valid with hyphen",
 			username: "user-name",
-			wantErr:  false,
 		},
 		{
-			name:     "invalid - too short",
+			name:     "short value",
 			username: "ab",
-			wantErr:  true,
 		},
 		{
-			name:     "invalid - starts with underscore",
+			name:     "starts with underscore",
 			username: "_username",
-			wantErr:  true,
 		},
 		{
-			name:     "invalid - contains @",
+			name:     "contains at sign",
 			username: "user@name",
-			wantErr:  true,
 		},
 		{
-			name:     "invalid - empty",
+			name:     "empty value",
 			username: "",
-			wantErr:  true,
+		},
+		{
+			name:     "contains unicode",
+			username: "usér😀",
+		},
+		{
+			name:     "contains whitespace",
+			username: "user name",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateUsername(tt.username)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ValidateUsername(%q) error = %v, wantErr %v", tt.username, err, tt.wantErr)
-			}
-
-			if err != nil && err != domain.ErrInvalidUsername {
-				t.Errorf("Expected domain.ErrInvalidUsername, got %v", err)
+			if err != nil {
+				t.Errorf("ValidateUsername(%q) error = %v, want nil", tt.username, err)
 			}
 		})
 	}

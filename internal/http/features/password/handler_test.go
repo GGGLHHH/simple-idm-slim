@@ -3,6 +3,8 @@ package password
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -46,6 +48,7 @@ func TestRegisterRequest_Validation(t *testing.T) {
 	handler := &Handler{
 		passwordService: nil,
 		sessionService:  nil,
+		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	for _, tt := range tests {
@@ -112,6 +115,7 @@ func TestLoginRequest_Validation(t *testing.T) {
 	handler := &Handler{
 		passwordService: nil,
 		sessionService:  nil,
+		logger:          slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	for _, tt := range tests {

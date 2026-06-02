@@ -25,7 +25,7 @@ var (
 // Validation errors
 var (
 	ErrInvalidEmail     = errors.New("invalid email address")
-	ErrInvalidUsername  = errors.New("invalid username format")
+	ErrInvalidUsername  = errors.New("invalid username format") // Deprecated: username format policy is host-defined.
 	ErrWeakPassword     = errors.New("password does not meet requirements")
 	ErrEmailNotVerified = errors.New("email not verified")
 )

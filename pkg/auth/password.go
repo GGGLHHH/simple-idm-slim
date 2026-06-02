@@ -24,23 +24,23 @@ const (
 
 // PasswordService handles password authentication.
 type PasswordService struct {
-	db                   *sql.DB
-	users                *repository.UsersRepository
-	creds                *repository.CredentialsRepository
-	policy               *PasswordPolicy
+	db                    *sql.DB
+	users                 *repository.UsersRepository
+	creds                 *repository.CredentialsRepository
+	policy                *PasswordPolicy
 	strictEmailValidation bool
-	blockDisposableEmail bool
+	blockDisposableEmail  bool
 }
 
 // NewPasswordService creates a new password service.
 func NewPasswordService(db *sql.DB, users *repository.UsersRepository, creds *repository.CredentialsRepository, policy *PasswordPolicy, strictEmailValidation, blockDisposableEmail bool) *PasswordService {
 	return &PasswordService{
-		db:                   db,
-		users:                users,
-		creds:                creds,
-		policy:               policy,
+		db:                    db,
+		users:                 users,
+		creds:                 creds,
+		policy:                policy,
 		strictEmailValidation: strictEmailValidation,
-		blockDisposableEmail: blockDisposableEmail,
+		blockDisposableEmail:  blockDisposableEmail,
 	}
 }
 
@@ -73,11 +73,6 @@ func (s *PasswordService) Register(ctx context.Context, email, password, name st
 
 	// Validate and check username if provided
 	if username != nil && *username != "" {
-		// Validate username format
-		if err := ValidateUsername(*username); err != nil {
-			return nil, err
-		}
-
 		// Check if username already exists
 		exists, err := s.users.ExistsByUsername(ctx, *username)
 		if err != nil {
