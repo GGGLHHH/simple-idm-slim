@@ -438,6 +438,72 @@ make migrate-status
 
 Set `DB_URL` environment variable or it defaults to `postgres://localhost/simple_idm?sslmode=disable`.
 
+## Roles
+
+Roles are coarse, platform-level labels (e.g. `admin`, `creator`, `platform_staff`) that answer "what kind of user is this on the platform?" They are not fine-grained business permissions or scopes — keep permission/access-control logic in your own application layer.
+
+### Setup
+
+Run the roles migration before using the role API:
+
+```bash
+# Using goose
+goose -dir migrations postgres "$DB_URL" up
+
+# The migration that adds role support is:
+# migrations/20251218000007_add_roles.sql
+```
+
+### Usage
+
+```go
+import (
+    "context"
+
+    "github.com/google/uuid"
+    "github.com/tendant/simple-idm-slim/idm"
+)
+
+ctx := context.Background()
+
+// auth is the *IDM instance returned by idm.New(idm.Config{...}).
+auth, _ := idm.New(idm.Config{ /* DB, JWTSecret, ... */ })
+
+// --- Role CRUD ---
+
+role, err := auth.CreateRole(ctx, "admin")
+role, err  = auth.GetRole(ctx, "admin")
+roles, err := auth.ListRoles(ctx)
+role, err  = auth.RenameRole(ctx, role.ID, "platform_admin")
+err         = auth.DeleteRole(ctx, role.ID)
+
+// --- User assignment ---
+// AssignRole and SetUserRoles auto-create roles by name if they do not exist yet.
+
+var userID uuid.UUID // obtained from login / GetUser / etc.
+
+err = auth.AssignRole(ctx, userID, "creator")                       // add one role
+err = auth.SetUserRoles(ctx, userID, []string{"creator", "editor"}) // replace all roles
+err = auth.RemoveRole(ctx, userID, "creator")                       // missing role is a no-op
+names, err := auth.GetUserRoles(ctx, userID)                        // returns []string of role names
+```
+
+### JWT claim
+
+On every successful login and token refresh the user's current role names are injected into the JWT access token under the `roles` claim:
+
+```json
+{
+  "sub": "...",
+  "roles": ["creator", "editor"]
+}
+```
+
+Read the claim in your middleware with `idm.GetUserIDFromContext(ctx)` and a standard JWT parser, or inspect it via `auth.GetUser(r)`.
+
+> **NOTE — no batch read API by design.**  
+> simple-idm-slim intentionally does not expose a "get roles for many users" endpoint — the library stays slim and focused. If you need bulk role data, use the `roles` claim from the JWT (already in every request) rather than querying `user_roles` directly. Coupling application code to the `roles` / `user_roles` database tables is discouraged: these are internal schema, and a future migration may restructure them without a major version bump.
+
 ## Extensibility
 
 Core packages are in `pkg/` and can be extended or replaced:
