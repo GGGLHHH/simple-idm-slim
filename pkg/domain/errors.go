@@ -20,6 +20,9 @@ var (
 	ErrVerificationTokenExpired  = errors.New("verification token expired")
 	ErrVerificationTokenConsumed = errors.New("verification token already used")
 	ErrVerificationTokenInvalid  = errors.New("invalid verification token")
+	ErrRoleNotFound              = errors.New("role not found")
+	ErrInvalidRoleName           = errors.New("invalid role name")
+	ErrRoleAlreadyExists         = errors.New("role already exists")
 )
 
 // Validation errors

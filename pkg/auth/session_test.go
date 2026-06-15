@@ -1,11 +1,17 @@
 package auth
 
 import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/tendant/simple-idm-slim/pkg/domain"
 )
 
 func TestSessionService_ValidateAccessToken(t *testing.T) {
@@ -192,4 +198,69 @@ func TestNewSessionService_CustomTTL(t *testing.T) {
 	if service.config.RefreshTokenTTL != customRefresh {
 		t.Errorf("RefreshTokenTTL should be %v, got %v", customRefresh, service.config.RefreshTokenTTL)
 	}
+}
+
+func TestNewSessionService_BackwardCompatibleNilRoles(t *testing.T) {
+	// Legacy constructor must behave as roles=nil and not panic.
+	svc := NewSessionService(SessionConfig{JWTSecret: []byte("secret")}, nil, nil)
+	if svc == nil {
+		t.Fatal("expected non-nil service")
+	}
+	if svc.roles != nil {
+		t.Fatal("expected roles to be nil for legacy constructor")
+	}
+	// With nil roles, getUserRoleNames returns (nil, nil).
+	names, err := svc.getUserRoleNames(context.Background(), uuid.New())
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if names != nil {
+		t.Fatalf("expected nil names, got %#v", names)
+	}
+}
+
+func TestIssueAccessToken_RolesClaim(t *testing.T) {
+	svc := NewSessionService(SessionConfig{JWTSecret: []byte("test-secret-test-secret-test-secret")}, nil, nil)
+	user := &domain.User{ID: uuid.New(), Email: "u@example.com"}
+	now := time.Now()
+
+	// With roles -> claim present and correct.
+	tok, err := svc.issueAccessToken(context.Background(), user, []string{"admin", "creator"}, uuid.New(), now, now.Add(time.Hour), IssueSessionOpts{})
+	if err != nil {
+		t.Fatalf("issue with roles: %v", err)
+	}
+	claims, err := svc.ValidateAccessToken(tok)
+	if err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+	if !reflect.DeepEqual(claims.Roles, []string{"admin", "creator"}) {
+		t.Fatalf("roles claim mismatch: %#v", claims.Roles)
+	}
+
+	// Nil roles -> "roles" key omitted from the token payload (omitempty).
+	tok2, err := svc.issueAccessToken(context.Background(), user, nil, uuid.New(), now, now.Add(time.Hour), IssueSessionOpts{})
+	if err != nil {
+		t.Fatalf("issue nil roles: %v", err)
+	}
+	if tokenPayloadHasKey(t, tok2, "roles") {
+		t.Fatal("expected no 'roles' key in token payload when roles is nil")
+	}
+}
+
+func tokenPayloadHasKey(t *testing.T, token, key string) bool {
+	t.Helper()
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		t.Fatalf("malformed token: %d segments", len(parts))
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	_, ok := m[key]
+	return ok
 }
